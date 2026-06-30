@@ -114,8 +114,11 @@ function App() {
   const [bpm, setBpm] = useState(90);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [selectedPhraseId, setSelectedPhraseId] = useState(phrases[0].id);
   const [audioError, setAudioError] = useState<string | null>(null);
   const engineRef = useRef<BackingTrackEngine | null>(null);
+  const selectedPhrase =
+    phrases.find((phrase) => phrase.id === selectedPhraseId) ?? phrases[0];
 
   useEffect(() => {
     engineRef.current?.setBpm(bpm);
@@ -219,9 +222,35 @@ function App() {
         </div>
       </section>
 
+      <section className="focus-panel" aria-label="Selected phrase">
+        <div className="focus-copy">
+          <span className="meter-label">Selected phrase</span>
+          <h2>{selectedPhrase.title}</h2>
+          <p>{selectedPhrase.memo}</p>
+          <div className="phrase-meta">
+            <span>{selectedPhrase.key}</span>
+            <span>
+              {selectedPhrase.bars} bar{selectedPhrase.bars > 1 ? "s" : ""}
+            </span>
+            <span>{selectedPhrase.difficulty}</span>
+          </div>
+        </div>
+        <pre
+          className="focus-tab"
+          aria-label={`${selectedPhrase.title} selected tab`}
+        >
+          {selectedPhrase.tab.join("\n")}
+        </pre>
+      </section>
+
       <section className="phrase-grid" aria-label="Practice phrases">
         {phrases.map((phrase) => (
-          <article className="phrase-card" key={phrase.id}>
+          <article
+            className={`phrase-card ${
+              phrase.id === selectedPhrase.id ? "phrase-card-selected" : ""
+            }`}
+            key={phrase.id}
+          >
             <div className="phrase-header">
               <div>
                 <h2>{phrase.title}</h2>
@@ -236,6 +265,14 @@ function App() {
             <pre aria-label={`${phrase.title} tab`}>
               {phrase.tab.join("\n")}
             </pre>
+            <button
+              className="select-phrase-button"
+              type="button"
+              aria-pressed={phrase.id === selectedPhrase.id}
+              onClick={() => setSelectedPhraseId(phrase.id)}
+            >
+              {phrase.id === selectedPhrase.id ? "Selected" : "Practice this"}
+            </button>
           </article>
         ))}
       </section>
