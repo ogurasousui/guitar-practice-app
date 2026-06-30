@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BackingTrackEngine } from "./audioEngine";
 
 type Phrase = {
   id: string;
@@ -111,6 +112,51 @@ const phrases: Phrase[] = [
 
 function App() {
   const [bpm, setBpm] = useState(90);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const engineRef = useRef<BackingTrackEngine | null>(null);
+
+  useEffect(() => {
+    engineRef.current?.setBpm(bpm);
+  }, [bpm]);
+
+  useEffect(() => {
+    return () => {
+      engineRef.current?.stop();
+    };
+  }, []);
+
+  const handlePlay = async () => {
+    if (engineRef.current) {
+      return;
+    }
+
+    setAudioError(null);
+    const engine = new BackingTrackEngine(bpm, setCurrentStep);
+    engineRef.current = engine;
+
+    try {
+      await engine.start();
+      setIsPlaying(true);
+    } catch (error) {
+      engine.stop();
+      engineRef.current = null;
+      setIsPlaying(false);
+      setAudioError(
+        error instanceof Error ? error.message : "Could not start audio.",
+      );
+    }
+  };
+
+  const handleStop = () => {
+    engineRef.current?.stop();
+    engineRef.current = null;
+    setIsPlaying(false);
+    setCurrentStep(0);
+  };
+
+  const currentBeat = Math.floor(currentStep / 4) + 1;
 
   return (
     <main className="app-shell">
@@ -121,10 +167,20 @@ function App() {
         </div>
 
         <div className="transport-panel">
-          <button className="transport-button" type="button" disabled>
+          <button
+            className="transport-button"
+            type="button"
+            onClick={handlePlay}
+            disabled={isPlaying}
+          >
             Play
           </button>
-          <button className="transport-button secondary" type="button" disabled>
+          <button
+            className="transport-button secondary"
+            type="button"
+            onClick={handleStop}
+            disabled={!isPlaying}
+          >
             Stop
           </button>
           <label className="bpm-control">
@@ -142,18 +198,24 @@ function App() {
         </div>
       </section>
 
+      {audioError ? (
+        <p className="audio-error" role="alert">
+          {audioError}
+        </p>
+      ) : null}
+
       <section className="meter-band" aria-label="Current backing">
-        <div>
+        <div className={isPlaying ? "meter-active" : undefined}>
           <span className="meter-label">Backing</span>
-          <strong>Drums + Bass</strong>
+          <strong>{isPlaying ? "Playing" : "Drums + Bass"}</strong>
         </div>
         <div>
-          <span className="meter-label">Time</span>
-          <strong>4/4</strong>
+          <span className="meter-label">Beat</span>
+          <strong>{isPlaying ? `${currentBeat}/4` : "4/4"}</strong>
         </div>
         <div>
           <span className="meter-label">Loop</span>
-          <strong>1-2 bars</strong>
+          <strong>{isPlaying ? "1 bar backing" : "1-2 bars"}</strong>
         </div>
       </section>
 
