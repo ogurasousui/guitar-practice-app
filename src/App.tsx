@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BackingTrackEngine,
   type AudioLevels,
@@ -6,17 +6,14 @@ import {
   type RhythmPatternId,
   type ScaleMode,
 } from "./audioEngine";
+import { phrases, type Difficulty } from "./phrases";
 import TabNotation, { type TabEvent } from "./TabNotation";
+import VexFlowTabNotation from "./VexFlowTabNotation";
 
-type Phrase = {
-  id: string;
-  title: string;
-  difficulty: "Easy" | "Medium";
-  bars: number;
-  memo: string;
-  totalSteps: number;
-  tabEvents: TabEvent[];
-};
+type DifficultyFilter = "all" | Difficulty;
+type BarFilter = "all" | "1" | "2";
+type SortMode = "library" | "title" | "difficulty" | "bars";
+type ViewMode = "detail" | "compact" | "vexflow";
 
 const KEY_OPTIONS: MusicalKey[] = [
   "A",
@@ -65,209 +62,51 @@ const RHYTHM_PATTERNS: Array<{
   { id: "funk-eighths", label: "Funk Eighths" },
 ];
 
-const phrases: Phrase[] = [
-  {
-    id: "minor-pentatonic-up",
-    title: "Minor Pentatonic Up",
-    difficulty: "Easy",
-    bars: 1,
-    memo: "Minor pentatonic ascending line",
-    totalSteps: 16,
-    tabEvents: [
-      { step: 0, duration: "eighth", notes: [{ string: 5, fret: "5" }] },
-      { step: 2, duration: "eighth", notes: [{ string: 5, fret: "7" }] },
-      { step: 4, duration: "eighth", notes: [{ string: 4, fret: "5" }] },
-      { step: 6, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-      { step: 8, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 10, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 12, duration: "eighth", notes: [{ string: 2, fret: "5" }] },
-      { step: 14, duration: "eighth", notes: [{ string: 2, fret: "8" }] },
-    ],
-  },
-  {
-    id: "minor-pentatonic-down",
-    title: "Minor Pentatonic Down",
-    difficulty: "Easy",
-    bars: 1,
-    memo: "Descending line for return practice",
-    totalSteps: 16,
-    tabEvents: [
-      { step: 0, duration: "eighth", notes: [{ string: 1, fret: "8" }] },
-      { step: 2, duration: "eighth", notes: [{ string: 1, fret: "5" }] },
-      { step: 4, duration: "eighth", notes: [{ string: 2, fret: "8" }] },
-      { step: 6, duration: "eighth", notes: [{ string: 2, fret: "5" }] },
-      { step: 8, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 10, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 12, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-      { step: 14, duration: "eighth", notes: [{ string: 4, fret: "5" }] },
-    ],
-  },
-  {
-    id: "low-string-riff",
-    title: "Low String Riff",
-    difficulty: "Easy",
-    bars: 2,
-    memo: "Muted eighth-note rock pattern",
-    totalSteps: 32,
-    tabEvents: [
-      {
-        step: 0,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 2,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 4,
-        duration: "quarter",
-        notes: [
-          { string: 5, fret: "5" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 8,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 10,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 12,
-        duration: "quarter",
-        notes: [
-          { string: 5, fret: "5" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 16,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 18,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 20,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "5" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 24,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "8" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 26,
-        duration: "eighth",
-        notes: [
-          { string: 5, fret: "7" },
-          { string: 6, fret: "5" },
-        ],
-      },
-      {
-        step: 28,
-        duration: "quarter",
-        notes: [
-          { string: 5, fret: "5" },
-          { string: 6, fret: "5" },
-        ],
-      },
-    ],
-  },
-  {
-    id: "blues-box",
-    title: "Blues Box",
-    difficulty: "Medium",
-    bars: 1,
-    memo: "Small box phrase without bending",
-    totalSteps: 16,
-    tabEvents: [
-      { step: 0, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 2, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 4, duration: "eighth", notes: [{ string: 2, fret: "5" }] },
-      { step: 6, duration: "eighth", notes: [{ string: 2, fret: "8" }] },
-      { step: 8, duration: "quarter", notes: [{ string: 1, fret: "5" }] },
-      { step: 12, duration: "eighth", notes: [{ string: 2, fret: "8" }] },
-      { step: 14, duration: "eighth", notes: [{ string: 2, fret: "5" }] },
-    ],
-  },
-  {
-    id: "rest-practice",
-    title: "Rest Practice",
-    difficulty: "Easy",
-    bars: 1,
-    memo: "Short rests inside an eighth-note line",
-    totalSteps: 16,
-    tabEvents: [
-      { step: 0, duration: "quarter", notes: [{ string: 4, fret: "7" }] },
-      { step: 4, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 6, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-      { step: 8, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 10, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-      { step: 12, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 14, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-    ],
-  },
-  {
-    id: "two-bar-run",
-    title: "Two Bar Run",
-    difficulty: "Medium",
-    bars: 2,
-    memo: "Connect low and high positions",
-    totalSteps: 32,
-    tabEvents: [
-      { step: 0, duration: "eighth", notes: [{ string: 5, fret: "5" }] },
-      { step: 2, duration: "eighth", notes: [{ string: 5, fret: "7" }] },
-      { step: 4, duration: "eighth", notes: [{ string: 5, fret: "5" }] },
-      { step: 6, duration: "eighth", notes: [{ string: 5, fret: "7" }] },
-      { step: 8, duration: "eighth", notes: [{ string: 4, fret: "5" }] },
-      { step: 10, duration: "eighth", notes: [{ string: 4, fret: "7" }] },
-      { step: 12, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 14, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 16, duration: "eighth", notes: [{ string: 3, fret: "5" }] },
-      { step: 18, duration: "eighth", notes: [{ string: 3, fret: "7" }] },
-      { step: 20, duration: "eighth", notes: [{ string: 2, fret: "5" }] },
-      { step: 22, duration: "eighth", notes: [{ string: 2, fret: "8" }] },
-      { step: 24, duration: "eighth", notes: [{ string: 1, fret: "5" }] },
-      { step: 26, duration: "eighth", notes: [{ string: 1, fret: "8" }] },
-      { step: 28, duration: "quarter", notes: [{ string: 1, fret: "5" }] },
-    ],
-  },
+const DIFFICULTY_FILTERS: Array<{
+  id: DifficultyFilter;
+  label: string;
+}> = [
+  { id: "all", label: "All" },
+  { id: "Easy", label: "Easy" },
+  { id: "Medium", label: "Medium" },
+  { id: "Hard", label: "Hard" },
 ];
+
+const BAR_FILTERS: Array<{
+  id: BarFilter;
+  label: string;
+}> = [
+  { id: "all", label: "All" },
+  { id: "1", label: "1 bar" },
+  { id: "2", label: "2 bars" },
+];
+
+const SORT_OPTIONS: Array<{
+  id: SortMode;
+  label: string;
+}> = [
+  { id: "library", label: "Library" },
+  { id: "title", label: "Title" },
+  { id: "difficulty", label: "Difficulty" },
+  { id: "bars", label: "Bars" },
+];
+
+const VIEW_OPTIONS: Array<{
+  id: ViewMode;
+  label: string;
+}> = [
+  { id: "detail", label: "Detail" },
+  { id: "compact", label: "Compact" },
+  { id: "vexflow", label: "VexFlow" },
+];
+
+const DIFFICULTY_RANK: Record<Difficulty, number> = {
+  Easy: 0,
+  Medium: 1,
+  Hard: 2,
+};
+
+const FAVORITE_STORAGE_KEY = "guitar-practice-favorite-phrases";
 
 function App() {
   const [bpm, setBpm] = useState(90);
@@ -281,6 +120,15 @@ function App() {
     drums: 0.9,
     bass: 0.85,
   });
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all");
+  const [barFilter, setBarFilter] = useState<BarFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("library");
+  const [viewMode, setViewMode] = useState<ViewMode>("detail");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [favoritePhraseIds, setFavoritePhraseIds] = useState<string[]>(
+    getStoredFavoritePhraseIds,
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -311,12 +159,67 @@ function App() {
   }, [levels]);
 
   useEffect(() => {
+    storeFavoritePhraseIds(favoritePhraseIds);
+  }, [favoritePhraseIds]);
+
+  useEffect(() => {
     return () => {
       engineRef.current?.stop();
     };
   }, []);
 
-  const handlePlay = async () => {
+  const favoritePhraseIdSet = useMemo(
+    () => new Set(favoritePhraseIds),
+    [favoritePhraseIds],
+  );
+
+  const visiblePhrases = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return phrases
+      .filter((phrase) => {
+        const matchesDifficulty =
+          difficultyFilter === "all" || phrase.difficulty === difficultyFilter;
+        const matchesBars = barFilter === "all" || phrase.bars === Number(barFilter);
+        const matchesSearch =
+          normalizedSearchTerm.length === 0 ||
+          phrase.title.toLowerCase().includes(normalizedSearchTerm) ||
+          phrase.memo.toLowerCase().includes(normalizedSearchTerm);
+
+        return matchesDifficulty && matchesBars && matchesSearch;
+      })
+      .sort((firstPhrase, secondPhrase) => {
+        const firstFavorite = favoritePhraseIdSet.has(firstPhrase.id);
+        const secondFavorite = favoritePhraseIdSet.has(secondPhrase.id);
+
+        if (firstFavorite !== secondFavorite) {
+          return firstFavorite ? -1 : 1;
+        }
+
+        switch (sortMode) {
+          case "title":
+            return firstPhrase.title.localeCompare(secondPhrase.title);
+          case "difficulty": {
+            const difficultyDifference =
+              DIFFICULTY_RANK[firstPhrase.difficulty] -
+              DIFFICULTY_RANK[secondPhrase.difficulty];
+            return (
+              difficultyDifference || firstPhrase.title.localeCompare(secondPhrase.title)
+            );
+          }
+          case "bars":
+            return (
+              firstPhrase.bars - secondPhrase.bars ||
+              firstPhrase.title.localeCompare(secondPhrase.title)
+            );
+          case "library":
+          default:
+            return 0;
+        }
+      });
+  }, [barFilter, difficultyFilter, favoritePhraseIdSet, searchTerm, sortMode]);
+
+  const handlePlay = useCallback(async () => {
     if (engineRef.current) {
       return;
     }
@@ -342,13 +245,42 @@ function App() {
         error instanceof Error ? error.message : "Could not start audio.",
       );
     }
-  };
+  }, [bpm, halfStepDown, levels, practiceKey, rhythmPattern, scaleMode]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     engineRef.current?.stop();
     engineRef.current = null;
     setIsPlaying(false);
     setCurrentStep(0);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat || isKeyboardInputTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (engineRef.current) {
+        handleStop();
+      } else {
+        void handlePlay();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePlay, handleStop]);
+
+  const toggleFavoritePhrase = (phraseId: string) => {
+    setFavoritePhraseIds((currentFavoritePhraseIds) => {
+      if (currentFavoritePhraseIds.includes(phraseId)) {
+        return currentFavoritePhraseIds.filter((id) => id !== phraseId);
+      }
+
+      return [phraseId, ...currentFavoritePhraseIds];
+    });
   };
 
   const currentBeat = Math.floor(currentStep / 4) + 1;
@@ -358,6 +290,8 @@ function App() {
   const keyOffset = KEY_OFFSETS[practiceKey] + getScaleOffset(scaleMode);
   const keyLabel = `${practiceKey} ${scaleMode}`;
   const tuningLabel = halfStepDown ? "Half step down" : "Standard";
+  const isCompactView = viewMode === "compact";
+  const isVexFlowView = viewMode === "vexflow";
 
   const updateLevel = (level: keyof AudioLevels, value: number) => {
     setLevels((currentLevels) => ({
@@ -501,31 +435,188 @@ function App() {
         </div>
       </section>
 
-      <section className="phrase-grid" aria-label="Practice phrases">
-        {phrases.map((phrase) => (
-          <article className="phrase-card" key={phrase.id}>
-            <div className="phrase-header">
-              <div>
-                <h2>{phrase.title}</h2>
-                <p>{phrase.memo}</p>
-              </div>
-              <span className="difficulty">{phrase.difficulty}</span>
-            </div>
-            <div className="phrase-meta">
-              <span>{keyLabel}</span>
-              <span>{tuningLabel}</span>
-              <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
-            </div>
-            <TabNotation
-              compact
-              events={transposeTabEvents(phrase.tabEvents, keyOffset)}
-              totalSteps={phrase.totalSteps}
-              title={phrase.title}
-            />
-          </article>
-        ))}
+      <section className="library-toolbar" aria-label="Phrase filters">
+        <label className="search-control">
+          <span>Search</span>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Phrase or memo"
+          />
+        </label>
+        <label className="select-control">
+          <span>Difficulty</span>
+          <select
+            value={difficultyFilter}
+            onChange={(event) =>
+              setDifficultyFilter(event.target.value as DifficultyFilter)
+            }
+          >
+            {DIFFICULTY_FILTERS.map((filter) => (
+              <option key={filter.id} value={filter.id}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="select-control">
+          <span>Bars</span>
+          <select
+            value={barFilter}
+            onChange={(event) => setBarFilter(event.target.value as BarFilter)}
+          >
+            {BAR_FILTERS.map((filter) => (
+              <option key={filter.id} value={filter.id}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="select-control">
+          <span>Sort</span>
+          <select
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value as SortMode)}
+          >
+            {SORT_OPTIONS.map((sortOption) => (
+              <option key={sortOption.id} value={sortOption.id}>
+                {sortOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="select-control">
+          <span>View</span>
+          <select
+            value={viewMode}
+            onChange={(event) => setViewMode(event.target.value as ViewMode)}
+          >
+            {VIEW_OPTIONS.map((viewOption) => (
+              <option key={viewOption.id} value={viewOption.id}>
+                {viewOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="result-count" aria-live="polite">
+          <span>Showing</span>
+          <strong>
+            {visiblePhrases.length}/{phrases.length}
+          </strong>
+        </div>
+      </section>
+
+      <section
+        className={`phrase-grid ${isCompactView ? "phrase-grid-compact" : ""}`}
+        aria-label="Practice phrases"
+      >
+        {visiblePhrases.length > 0 ? (
+          visiblePhrases.map((phrase) => {
+            const isFavorite = favoritePhraseIdSet.has(phrase.id);
+            const difficultyClass = phrase.difficulty.toLowerCase();
+            const transposedEvents = transposeTabEvents(phrase.tabEvents, keyOffset);
+
+            return (
+              <article
+                className={`phrase-card ${isCompactView ? "phrase-card-compact" : ""} ${
+                  isFavorite ? "phrase-card-favorite" : ""
+                }`}
+                key={phrase.id}
+              >
+                <div className="phrase-header">
+                  <div>
+                    <h2>{phrase.title}</h2>
+                    {!isCompactView ? <p>{phrase.memo}</p> : null}
+                  </div>
+                  <span className={`difficulty difficulty-${difficultyClass}`}>
+                    {phrase.difficulty}
+                  </span>
+                  <label className="favorite-control">
+                    <input
+                      type="checkbox"
+                      checked={isFavorite}
+                      onChange={() => toggleFavoritePhrase(phrase.id)}
+                    />
+                    <span>{isCompactView ? "Fav" : "Favorite"}</span>
+                  </label>
+                </div>
+                {!isCompactView ? (
+                  <div className="phrase-meta">
+                    <span>{keyLabel}</span>
+                    <span>{tuningLabel}</span>
+                    <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
+                  </div>
+                ) : null}
+                {isVexFlowView ? (
+                  <VexFlowTabNotation
+                    events={transposedEvents}
+                    totalSteps={phrase.totalSteps}
+                    title={phrase.title}
+                  />
+                ) : (
+                  <TabNotation
+                    compact={isCompactView}
+                    events={transposedEvents}
+                    totalSteps={phrase.totalSteps}
+                    title={phrase.title}
+                  />
+                )}
+              </article>
+            );
+          })
+        ) : (
+          <p className="empty-state">No phrases match the current filters.</p>
+        )}
       </section>
     </main>
+  );
+}
+
+function getStoredFavoritePhraseIds() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(FAVORITE_STORAGE_KEY);
+    const parsedValue: unknown = storedValue ? JSON.parse(storedValue) : [];
+
+    return Array.isArray(parsedValue)
+      ? parsedValue.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeFavoritePhraseIds(favoritePhraseIds: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      FAVORITE_STORAGE_KEY,
+      JSON.stringify(favoritePhraseIds),
+    );
+  } catch {
+    // Favorites are optional; ignore storage failures in private browsing modes.
+  }
+}
+
+function isKeyboardInputTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === "input" ||
+    tagName === "select" ||
+    tagName === "textarea" ||
+    tagName === "button"
   );
 }
 

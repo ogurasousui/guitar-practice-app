@@ -34,7 +34,7 @@ button:disabled {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1240px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 42px;
 }
@@ -149,9 +149,19 @@ h1 {
   padding: 18px 0 0;
 }
 
+.library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) repeat(5, minmax(118px, 0.72fr));
+  gap: 12px;
+  min-width: 0;
+  padding: 0 0 18px;
+}
+
 .select-control,
 .toggle-control,
-.volume-control {
+.volume-control,
+.search-control,
+.result-count {
   display: grid;
   min-width: 0;
   gap: 6px;
@@ -163,7 +173,9 @@ h1 {
 
 .select-control span,
 .toggle-control span,
-.volume-control span {
+.volume-control span,
+.search-control span,
+.result-count span {
   color: #60656c;
   font-size: 0.78rem;
   font-weight: 800;
@@ -171,7 +183,8 @@ h1 {
   text-transform: uppercase;
 }
 
-.select-control select {
+.select-control select,
+.search-control input {
   min-width: 0;
   min-height: 34px;
   border: 1px solid #d8d2c8;
@@ -179,6 +192,15 @@ h1 {
   background: #ffffff;
   color: #1f2226;
   font-weight: 800;
+}
+
+.search-control input {
+  padding: 0 8px;
+}
+
+.search-control input::placeholder {
+  color: #8b9097;
+  font-weight: 700;
 }
 
 .toggle-control {
@@ -202,7 +224,8 @@ h1 {
   align-items: center;
 }
 
-.volume-control strong {
+.volume-control strong,
+.result-count strong {
   justify-self: end;
   color: #1f2226;
   font-variant-numeric: tabular-nums;
@@ -212,6 +235,10 @@ h1 {
   grid-column: 1 / -1;
   width: 100%;
   accent-color: #2f7a63;
+}
+
+.result-count {
+  align-content: center;
 }
 
 .meter-band {
@@ -250,8 +277,13 @@ h1 {
 
 .phrase-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.phrase-grid-compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .phrase-card {
@@ -265,10 +297,19 @@ h1 {
   background: #ffffff;
 }
 
+.phrase-card-compact {
+  padding: 10px;
+}
+
+.phrase-card-favorite {
+  border-color: #2f7a63;
+  box-shadow: inset 0 0 0 2px rgba(47, 122, 99, 0.2);
+}
+
 .phrase-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px 12px;
   align-items: start;
 }
 
@@ -278,6 +319,15 @@ h1 {
   font-size: 1.05rem;
   line-height: 1.2;
   letter-spacing: 0;
+}
+
+.phrase-card-compact h2 {
+  display: -webkit-box;
+  min-height: 2.4em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.88rem;
 }
 
 .phrase-card p {
@@ -298,6 +348,51 @@ h1 {
   font-weight: 800;
 }
 
+.phrase-card-compact .difficulty {
+  min-width: 54px;
+  padding: 3px 6px;
+  font-size: 0.68rem;
+}
+
+.difficulty-medium {
+  background: #d7b15f;
+  color: #251a0b;
+}
+
+.difficulty-hard {
+  background: #a24b38;
+  color: #ffffff;
+}
+
+.favorite-control {
+  grid-column: 1 / -1;
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  justify-self: start;
+  gap: 6px;
+  align-items: center;
+  color: #1f2226;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.favorite-control input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2f7a63;
+}
+
+.phrase-card-compact .favorite-control {
+  gap: 4px;
+  font-size: 0.72rem;
+}
+
+.phrase-card-compact .favorite-control input {
+  width: 15px;
+  height: 15px;
+}
+
 .phrase-meta {
   display: flex;
   flex-wrap: wrap;
@@ -312,7 +407,19 @@ h1 {
   padding: 2px 0;
 }
 
-.tab-notation {
+.empty-state {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid #d8d2c8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #60656c;
+  font-weight: 800;
+}
+
+.tab-notation,
+.vexflow-tab-notation {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -322,10 +429,30 @@ h1 {
   background: #fbfaf7;
 }
 
-.tab-notation svg {
+.tab-notation svg,
+.vexflow-tab-canvas svg {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: auto;
+}
+
+.phrase-card-compact .tab-notation {
+  min-height: 132px;
+  margin-top: 8px;
+}
+
+.vexflow-tab-notation {
+  min-height: 180px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.vexflow-tab-notation span {
+  display: block;
+  padding: 18px;
+  color: #60656c;
+  font-weight: 800;
 }
 
 @media (max-width: 900px) {
@@ -336,7 +463,9 @@ h1 {
 
   .control-band,
   .meter-band,
-  .phrase-grid {
+  .library-toolbar,
+  .phrase-grid,
+  .phrase-grid-compact {
     grid-template-columns: 1fr;
   }
 
@@ -350,8 +479,12 @@ h1 {
 }
 
 @media (max-width: 1120px) and (min-width: 901px) {
-  .phrase-grid {
+  .library-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .phrase-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -372,11 +505,23 @@ h1 {
     padding: 14px;
   }
 
+  .phrase-card-compact {
+    padding: 10px;
+  }
+
   .phrase-header {
     grid-template-columns: 1fr;
   }
 
   .difficulty {
     justify-self: start;
+  }
+
+  .tab-notation {
+    min-height: 202px;
+  }
+
+  .phrase-card-compact .tab-notation {
+    min-height: 132px;
   }
 }

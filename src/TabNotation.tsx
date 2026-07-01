@@ -8,7 +8,7 @@ import {
   Voice,
 } from "vexflow";
 
-export type TabDuration = "quarter" | "eighth";
+export type TabDuration = "quarter" | "eighth" | "sixteenth";
 
 export type TabEvent = {
   step: number;
@@ -32,11 +32,13 @@ const DEFAULT_RENDER_WIDTH = 560;
 const TAB_DURATION_TO_STEPS: Record<TabDuration, number> = {
   quarter: 4,
   eighth: 2,
+  sixteenth: 1,
 };
 
 const TAB_DURATION_TO_VEXFLOW: Record<TabDuration, string> = {
   quarter: "4",
   eighth: "8",
+  sixteenth: "16",
 };
 
 function getGapDurations(stepCount: number) {
