@@ -56,8 +56,29 @@ function getFlagPath(x: number, stemTop: number, duration: TabDuration) {
   return `${firstFlag} M ${x + 11} ${stemTop + 9} q 18 8 4 22`;
 }
 
+function getPositionFret(events: TabEvent[]) {
+  const frets = events.flatMap((event) =>
+    event.notes
+      .map((note) => Number(note.fret))
+      .filter((fret) => Number.isFinite(fret) && fret > 0),
+  );
+
+  return frets.length > 0 ? Math.min(...frets) : 1;
+}
+
+function getFingerLabel(fretText: string, positionFret: number) {
+  const fret = Number(fretText);
+
+  if (!Number.isFinite(fret) || fret <= 0) {
+    return null;
+  }
+
+  return String(Math.min(Math.max(fret - positionFret + 1, 1), 4));
+}
+
 function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
   const height = compact ? 176 : 220;
+  const positionFret = getPositionFret(events);
   const barSteps = Array.from(
     { length: Math.floor(totalSteps / 16) + 1 },
     (_, index) => index * 16,
@@ -117,21 +138,40 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
               </>
             ) : null}
             {event.notes.map((note, noteIndex) => {
-              const badgeWidth = note.fret.length > 1 ? 28 : 22;
+              const fingerLabel = getFingerLabel(note.fret, positionFret);
+              const badgeWidth = (note.fret.length > 1 ? 28 : 22) + (fingerLabel ? 10 : 0);
+              const y = getStringY(note.string);
+              const fretX = fingerLabel ? x - 4 : x;
+              const fingerX = x + badgeWidth / 2 - 7;
 
               return (
                 <g key={`${event.step}-${note.string}-${note.fret}-${noteIndex}`}>
                   <rect
                     className="tab-fret-bg"
                     x={x - badgeWidth / 2}
-                    y={getStringY(note.string) - 10}
+                    y={y - 10}
                     width={badgeWidth}
                     height="20"
                     rx="4"
                   />
-                  <text className="tab-fret" x={x} y={getStringY(note.string) + 6}>
+                  <text className="tab-fret" x={fretX} y={y + 6}>
                     {note.fret}
                   </text>
+                  {fingerLabel ? (
+                    <>
+                      <rect
+                        className="tab-finger-bg"
+                        x={fingerX - 5}
+                        y={y - 9}
+                        width="10"
+                        height="10"
+                        rx="3"
+                      />
+                      <text className="tab-finger" x={fingerX} y={y - 4}>
+                        {fingerLabel}
+                      </text>
+                    </>
+                  ) : null}
                 </g>
               );
             })}
