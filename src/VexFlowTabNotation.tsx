@@ -32,6 +32,7 @@ type VexFlowApi = {
     positions: Array<{ str: number; fret: string }>;
     duration: string;
   }) => VexFlowTabNote;
+  GhostNote: new (duration: string | { duration: string }) => VexFlowTabNote;
   Formatter: {
     FormatAndDraw: (
       context: VexFlowRenderContext,
@@ -165,8 +166,28 @@ function drawTab(
   const stave = new vexFlow.TabStave(10, 34, width - 20);
   stave.addClef("tab").setContext(context).draw();
 
-  const notes = events.map(
-    (event) =>
+  vexFlow.Formatter.FormatAndDraw(
+    context,
+    stave,
+    buildTimelineNotes(vexFlow, events, totalSteps),
+  );
+}
+
+function buildTimelineNotes(
+  vexFlow: VexFlowApi,
+  events: TabEvent[],
+  totalSteps: number,
+) {
+  const sortedEvents = [...events].sort((firstEvent, secondEvent) => {
+    return firstEvent.step - secondEvent.step;
+  });
+  const notes: VexFlowTabNote[] = [];
+  let cursorStep = 0;
+
+  sortedEvents.forEach((event) => {
+    appendGhostNotes(vexFlow, notes, event.step - cursorStep);
+
+    notes.push(
       new vexFlow.TabNote({
         positions: event.notes.map((note) => ({
           str: note.string,
@@ -174,9 +195,35 @@ function drawTab(
         })),
         duration: getVexFlowDuration(event.duration),
       }),
-  );
+    );
 
-  vexFlow.Formatter.FormatAndDraw(context, stave, notes);
+    cursorStep = Math.max(cursorStep, event.step + getDurationSteps(event.duration));
+  });
+
+  appendGhostNotes(vexFlow, notes, totalSteps - cursorStep);
+
+  return notes;
+}
+
+function appendGhostNotes(
+  vexFlow: VexFlowApi,
+  notes: VexFlowTabNote[],
+  stepCount: number,
+) {
+  let remainingSteps = Math.max(0, stepCount);
+
+  while (remainingSteps > 0) {
+    if (remainingSteps >= 4) {
+      notes.push(new vexFlow.GhostNote("q"));
+      remainingSteps -= 4;
+    } else if (remainingSteps >= 2) {
+      notes.push(new vexFlow.GhostNote("8"));
+      remainingSteps -= 2;
+    } else {
+      notes.push(new vexFlow.GhostNote("16"));
+      remainingSteps -= 1;
+    }
+  }
 }
 
 function getVexFlowDuration(duration: TabDuration) {
@@ -187,6 +234,17 @@ function getVexFlowDuration(duration: TabDuration) {
       return "8";
     case "sixteenth":
       return "16";
+  }
+}
+
+function getDurationSteps(duration: TabDuration) {
+  switch (duration) {
+    case "quarter":
+      return 4;
+    case "eighth":
+      return 2;
+    case "sixteenth":
+      return 1;
   }
 }
 
