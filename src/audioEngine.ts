@@ -1,5 +1,33 @@
 type StepListener = (step: number) => void;
 
+export type MusicalKey =
+  | "A"
+  | "A#"
+  | "B"
+  | "C"
+  | "C#"
+  | "D"
+  | "D#"
+  | "E"
+  | "F"
+  | "F#"
+  | "G"
+  | "G#";
+
+export type RhythmPatternId = "straight-rock" | "half-time" | "funk-eighths";
+
+export type AudioLevels = {
+  master: number;
+  drums: number;
+  bass: number;
+};
+
+export type BackingTrackOptions = {
+  key: MusicalKey;
+  rhythmPattern: RhythmPatternId;
+  levels: AudioLevels;
+};
+
 declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
@@ -10,19 +38,48 @@ const STEPS_PER_BAR = 16;
 const SCHEDULE_AHEAD_SECONDS = 0.12;
 const LOOKAHEAD_MS = 25;
 
+const KEY_ROOT_FREQUENCIES: Record<MusicalKey, number> = {
+  A: 110,
+  "A#": 116.54,
+  B: 123.47,
+  C: 130.81,
+  "C#": 138.59,
+  D: 146.83,
+  "D#": 155.56,
+  E: 164.81,
+  F: 174.61,
+  "F#": 185,
+  G: 196,
+  "G#": 207.65,
+};
+
+const BASS_INTERVALS = [1, 6 / 5, 4 / 3, 3 / 2, 2];
+
 export class BackingTrackEngine {
   private audioContext: AudioContext | null = null;
   private master: GainNode | null = null;
+  private drums: GainNode | null = null;
+  private bass: GainNode | null = null;
   private timerId: number | null = null;
   private stepTimeoutIds: number[] = [];
   private nextStepTime = 0;
   private step = 0;
   private bpm: number;
+  private key: MusicalKey;
+  private rhythmPattern: RhythmPatternId;
+  private levels: AudioLevels;
   private readonly onStep: StepListener;
 
-  constructor(bpm: number, onStep: StepListener) {
+  constructor(
+    bpm: number,
+    onStep: StepListener,
+    options: BackingTrackOptions,
+  ) {
     this.bpm = bpm;
     this.onStep = onStep;
+    this.key = options.key;
+    this.rhythmPattern = options.rhythmPattern;
+    this.levels = options.levels;
   }
 
   async start() {
@@ -39,7 +96,11 @@ export class BackingTrackEngine {
 
     this.audioContext = new AudioContextConstructor();
     this.master = this.audioContext.createGain();
-    this.master.gain.value = 0.72;
+    this.drums = this.audioContext.createGain();
+    this.bass = this.audioContext.createGain();
+    this.applyLevels();
+    this.drums.connect(this.master);
+    this.bass.connect(this.master);
     this.master.connect(this.audioContext.destination);
 
     if (this.audioContext.state === "suspended") {
@@ -66,6 +127,8 @@ export class BackingTrackEngine {
     const context = this.audioContext;
     this.audioContext = null;
     this.master = null;
+    this.drums = null;
+    this.bass = null;
 
     if (context && context.state !== "closed") {
       void context.close();
@@ -74,6 +137,30 @@ export class BackingTrackEngine {
 
   setBpm(bpm: number) {
     this.bpm = bpm;
+  }
+
+  setKey(key: MusicalKey) {
+    this.key = key;
+  }
+
+  setRhythmPattern(rhythmPattern: RhythmPatternId) {
+    this.rhythmPattern = rhythmPattern;
+  }
+
+  setLevels(levels: AudioLevels) {
+    this.levels = levels;
+    this.applyLevels();
+  }
+
+  private applyLevels() {
+    if (!this.audioContext || !this.master || !this.drums || !this.bass) {
+      return;
+    }
+
+    const now = this.audioContext.currentTime;
+    this.master.gain.setTargetAtTime(this.levels.master, now, 0.01);
+    this.drums.gain.setTargetAtTime(this.levels.drums, now, 0.01);
+    this.bass.gain.setTargetAtTime(this.levels.bass, now, 0.01);
   }
 
   private scheduler() {
@@ -93,20 +180,23 @@ export class BackingTrackEngine {
   }
 
   private scheduleStep(step: number, time: number) {
-    if (step % 2 === 0) {
-      this.scheduleHiHat(time);
+    const drumPattern = this.getDrumPattern();
+
+    if (drumPattern.hats.includes(step)) {
+      this.scheduleHiHat(time, step % 4 === 0 ? 0.2 : 0.13);
     }
 
-    if (step === 0 || step === 8) {
+    if (drumPattern.kicks.includes(step)) {
       this.scheduleKick(time);
     }
 
-    if (step === 4 || step === 12) {
+    if (drumPattern.snares.includes(step)) {
       this.scheduleSnare(time);
     }
 
-    if (step % 4 === 0) {
-      this.scheduleBass(step, time);
+    const bassIndex = drumPattern.bass.indexOf(step);
+    if (bassIndex >= 0) {
+      this.scheduleBass(step, time, bassIndex);
     }
   }
 
@@ -124,8 +214,35 @@ export class BackingTrackEngine {
     return 60 / this.bpm / 4;
   }
 
+  private getDrumPattern() {
+    switch (this.rhythmPattern) {
+      case "half-time":
+        return {
+          hats: [0, 2, 4, 6, 8, 10, 12, 14],
+          kicks: [0, 6],
+          snares: [8],
+          bass: [0, 6, 8, 12],
+        };
+      case "funk-eighths":
+        return {
+          hats: [0, 2, 3, 4, 6, 8, 10, 11, 12, 14],
+          kicks: [0, 3, 10],
+          snares: [4, 12],
+          bass: [0, 3, 6, 10, 14],
+        };
+      case "straight-rock":
+      default:
+        return {
+          hats: [0, 2, 4, 6, 8, 10, 12, 14],
+          kicks: [0, 8],
+          snares: [4, 12],
+          bass: [0, 4, 8, 12],
+        };
+    }
+  }
+
   private scheduleKick(time: number) {
-    if (!this.audioContext || !this.master) {
+    if (!this.audioContext || !this.drums) {
       return;
     }
 
@@ -139,13 +256,13 @@ export class BackingTrackEngine {
     gain.gain.setValueAtTime(0.9, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
 
-    oscillator.connect(gain).connect(this.master);
+    oscillator.connect(gain).connect(this.drums);
     oscillator.start(time);
     oscillator.stop(time + 0.18);
   }
 
   private scheduleSnare(time: number) {
-    if (!this.audioContext || !this.master) {
+    if (!this.audioContext || !this.drums) {
       return;
     }
 
@@ -159,13 +276,13 @@ export class BackingTrackEngine {
     gain.gain.setValueAtTime(0.38, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
 
-    noise.connect(filter).connect(gain).connect(this.master);
+    noise.connect(filter).connect(gain).connect(this.drums);
     noise.start(time);
     noise.stop(time + 0.13);
   }
 
-  private scheduleHiHat(time: number) {
-    if (!this.audioContext || !this.master) {
+  private scheduleHiHat(time: number, level: number) {
+    if (!this.audioContext || !this.drums) {
       return;
     }
 
@@ -176,21 +293,22 @@ export class BackingTrackEngine {
     filter.type = "highpass";
     filter.frequency.setValueAtTime(6000, time);
 
-    gain.gain.setValueAtTime(0.16, time);
+    gain.gain.setValueAtTime(level, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
 
-    noise.connect(filter).connect(gain).connect(this.master);
+    noise.connect(filter).connect(gain).connect(this.drums);
     noise.start(time);
     noise.stop(time + 0.05);
   }
 
-  private scheduleBass(step: number, time: number) {
-    if (!this.audioContext || !this.master) {
+  private scheduleBass(step: number, time: number, bassIndex: number) {
+    if (!this.audioContext || !this.bass) {
       return;
     }
 
-    const pattern = [110, 130.81, 146.83, 164.81];
-    const note = pattern[(step / 4) % pattern.length];
+    const root = KEY_ROOT_FREQUENCIES[this.key];
+    const interval = BASS_INTERVALS[bassIndex % BASS_INTERVALS.length];
+    const note = root * interval;
     const oscillator = this.audioContext.createOscillator();
     const filter = this.audioContext.createBiquadFilter();
     const gain = this.audioContext.createGain();
@@ -206,7 +324,7 @@ export class BackingTrackEngine {
     gain.gain.exponentialRampToValueAtTime(0.34, time + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
-    oscillator.connect(filter).connect(gain).connect(this.master);
+    oscillator.connect(filter).connect(gain).connect(this.bass);
     oscillator.start(time);
     oscillator.stop(time + duration + 0.02);
   }
