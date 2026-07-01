@@ -12,6 +12,7 @@ import TabNotation, { type TabEvent } from "./TabNotation";
 type DifficultyFilter = "all" | Difficulty;
 type BarFilter = "all" | "1" | "2";
 type SortMode = "library" | "title" | "difficulty" | "bars";
+type ViewMode = "detail" | "compact";
 
 const KEY_OPTIONS: MusicalKey[] = [
   "A",
@@ -89,6 +90,14 @@ const SORT_OPTIONS: Array<{
   { id: "bars", label: "Bars" },
 ];
 
+const VIEW_OPTIONS: Array<{
+  id: ViewMode;
+  label: string;
+}> = [
+  { id: "detail", label: "Detail" },
+  { id: "compact", label: "Compact" },
+];
+
 const DIFFICULTY_RANK: Record<Difficulty, number> = {
   Easy: 0,
   Medium: 1,
@@ -113,6 +122,7 @@ function App() {
     useState<DifficultyFilter>("all");
   const [barFilter, setBarFilter] = useState<BarFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("library");
+  const [viewMode, setViewMode] = useState<ViewMode>("detail");
   const [searchTerm, setSearchTerm] = useState("");
   const [favoritePhraseIds, setFavoritePhraseIds] = useState<string[]>(
     getStoredFavoritePhraseIds,
@@ -259,6 +269,7 @@ function App() {
   const keyOffset = KEY_OFFSETS[practiceKey] + getScaleOffset(scaleMode);
   const keyLabel = `${practiceKey} ${scaleMode}`;
   const tuningLabel = halfStepDown ? "Half step down" : "Standard";
+  const isCompactView = viewMode === "compact";
 
   const updateLevel = (level: keyof AudioLevels, value: number) => {
     setLevels((currentLevels) => ({
@@ -453,6 +464,19 @@ function App() {
             ))}
           </select>
         </label>
+        <label className="select-control">
+          <span>View</span>
+          <select
+            value={viewMode}
+            onChange={(event) => setViewMode(event.target.value as ViewMode)}
+          >
+            {VIEW_OPTIONS.map((viewOption) => (
+              <option key={viewOption.id} value={viewOption.id}>
+                {viewOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="result-count" aria-live="polite">
           <span>Showing</span>
           <strong>
@@ -461,7 +485,10 @@ function App() {
         </div>
       </section>
 
-      <section className="phrase-grid" aria-label="Practice phrases">
+      <section
+        className={`phrase-grid ${isCompactView ? "phrase-grid-compact" : ""}`}
+        aria-label="Practice phrases"
+      >
         {visiblePhrases.length > 0 ? (
           visiblePhrases.map((phrase) => {
             const isFavorite = favoritePhraseIdSet.has(phrase.id);
@@ -469,13 +496,15 @@ function App() {
 
             return (
               <article
-                className={`phrase-card ${isFavorite ? "phrase-card-favorite" : ""}`}
+                className={`phrase-card ${isCompactView ? "phrase-card-compact" : ""} ${
+                  isFavorite ? "phrase-card-favorite" : ""
+                }`}
                 key={phrase.id}
               >
                 <div className="phrase-header">
                   <div>
                     <h2>{phrase.title}</h2>
-                    <p>{phrase.memo}</p>
+                    {!isCompactView ? <p>{phrase.memo}</p> : null}
                   </div>
                   <span className={`difficulty difficulty-${difficultyClass}`}>
                     {phrase.difficulty}
@@ -486,16 +515,18 @@ function App() {
                       checked={isFavorite}
                       onChange={() => toggleFavoritePhrase(phrase.id)}
                     />
-                    <span>Favorite</span>
+                    <span>{isCompactView ? "Fav" : "Favorite"}</span>
                   </label>
                 </div>
-                <div className="phrase-meta">
-                  <span>{keyLabel}</span>
-                  <span>{tuningLabel}</span>
-                  <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
-                </div>
+                {!isCompactView ? (
+                  <div className="phrase-meta">
+                    <span>{keyLabel}</span>
+                    <span>{tuningLabel}</span>
+                    <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
+                  </div>
+                ) : null}
                 <TabNotation
-                  compact
+                  compact={isCompactView}
                   events={transposeTabEvents(phrase.tabEvents, keyOffset)}
                   totalSteps={phrase.totalSteps}
                   title={phrase.title}
