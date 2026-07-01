@@ -133,6 +133,7 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
         beatValue: 4,
       });
 
+      voice.setStrict(false);
       stave.addTabGlyph();
       stave.setContext(context).draw();
       voice.addTickables(notes);
