@@ -151,7 +151,7 @@ h1 {
 
 .library-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1.35fr) repeat(4, minmax(132px, 0.8fr));
+  grid-template-columns: minmax(220px, 1.35fr) repeat(5, minmax(118px, 0.72fr));
   gap: 12px;
   min-width: 0;
   padding: 0 0 18px;
@@ -281,6 +281,11 @@ h1 {
   gap: 18px;
 }
 
+.phrase-grid-compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .phrase-card {
   display: flex;
   flex-direction: column;
@@ -290,6 +295,10 @@ h1 {
   border: 1px solid #d8d2c8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.phrase-card-compact {
+  padding: 10px;
 }
 
 .phrase-card-favorite {
@@ -312,6 +321,15 @@ h1 {
   letter-spacing: 0;
 }
 
+.phrase-card-compact h2 {
+  display: -webkit-box;
+  min-height: 2.4em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.88rem;
+}
+
 .phrase-card p {
   margin: 6px 0 0;
   color: #60656c;
@@ -328,6 +346,12 @@ h1 {
   color: #332411;
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.phrase-card-compact .difficulty {
+  min-width: 54px;
+  padding: 3px 6px;
+  font-size: 0.68rem;
 }
 
 .difficulty-medium {
@@ -357,6 +381,16 @@ h1 {
   width: 18px;
   height: 18px;
   accent-color: #2f7a63;
+}
+
+.phrase-card-compact .favorite-control {
+  gap: 4px;
+  font-size: 0.72rem;
+}
+
+.phrase-card-compact .favorite-control input {
+  width: 15px;
+  height: 15px;
 }
 
 .phrase-meta {
@@ -389,8 +423,13 @@ h1 {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 226px;
+  min-height: 204px;
   border-radius: 8px;
+}
+
+.phrase-card-compact .tab-notation {
+  min-height: 132px;
+  margin-top: 8px;
 }
 
 .tab-background {
@@ -401,30 +440,25 @@ h1 {
 .tab-fret,
 .tab-duration,
 .tab-legend {
+  fill: #f7f4ef;
   font-family:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, ui-monospace,
     monospace;
 }
 
 .tab-string-label {
-  fill: #f7f4ef;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
 .tab-string-line {
-  stroke: #dfe3e6;
-  stroke-width: 1.4;
-}
-
-.tab-beat-line {
-  stroke: rgba(247, 244, 239, 0.16);
-  stroke-width: 1;
+  stroke: #cfd2d6;
+  stroke-width: 1.2;
 }
 
 .tab-bar-line {
-  stroke: #f2c36b;
-  stroke-width: 2.4;
+  stroke: #f7f4ef;
+  stroke-width: 2;
 }
 
 .tab-stem,
@@ -436,16 +470,13 @@ h1 {
 }
 
 .tab-fret-bg {
-  fill: #f7f4ef;
-  stroke: #202124;
-  stroke-width: 1.2;
+  fill: #202124;
 }
 
 .tab-fret {
   dominant-baseline: middle;
-  fill: #15171a;
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 800;
   text-anchor: middle;
 }
 
@@ -470,7 +501,8 @@ h1 {
   .control-band,
   .meter-band,
   .library-toolbar,
-  .phrase-grid {
+  .phrase-grid,
+  .phrase-grid-compact {
     grid-template-columns: 1fr;
   }
 
@@ -486,6 +518,10 @@ h1 {
 @media (max-width: 1120px) and (min-width: 901px) {
   .library-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .phrase-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -506,6 +542,10 @@ h1 {
     padding: 14px;
   }
 
+  .phrase-card-compact {
+    padding: 10px;
+  }
+
   .phrase-header {
     grid-template-columns: 1fr;
   }
@@ -516,5 +556,9 @@ h1 {
 
   .tab-notation {
     min-height: 202px;
+  }
+
+  .phrase-card-compact .tab-notation {
+    min-height: 132px;
   }
 }
