@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 export type TabDuration = "quarter" | "eighth" | "sixteenth";
+export type TabTechnique = {
+  type: "hammer-on" | "pull-off" | "slide";
+  toFret: string;
+};
 
 export type TabEvent = {
   step: number;
@@ -9,6 +13,7 @@ export type TabEvent = {
     string: 1 | 2 | 3 | 4 | 5 | 6;
     fret: string;
   }>;
+  technique?: TabTechnique;
 };
 
 type TabNotationProps = {
@@ -86,9 +91,9 @@ function buildTabNotes(
     tabNotes.push(
       new vexFlow.TabNote(
         {
-          positions: event.notes.map((note) => ({
+          positions: event.notes.map((note, noteIndex) => ({
             str: note.string,
-            fret: note.fret,
+            fret: formatFretLabel(note.fret, event.technique, noteIndex),
           })),
           duration: TAB_DURATION_TO_VEXFLOW[event.duration],
         },
@@ -109,6 +114,25 @@ function buildTabNotes(
   }
 
   return tabNotes;
+}
+
+function formatFretLabel(
+  fret: string,
+  technique: TabTechnique | undefined,
+  noteIndex: number,
+) {
+  if (!technique || noteIndex > 0) {
+    return fret;
+  }
+
+  switch (technique.type) {
+    case "hammer-on":
+      return `${fret}h${technique.toFret}`;
+    case "pull-off":
+      return `${fret}p${technique.toFret}`;
+    case "slide":
+      return `${fret}/${technique.toFret}`;
+  }
 }
 
 function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {

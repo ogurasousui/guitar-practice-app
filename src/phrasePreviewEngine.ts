@@ -1,4 +1,4 @@
-import type { TabDuration, TabEvent } from "./TabNotation";
+import type { TabDuration, TabEvent, TabTechnique } from "./TabNotation";
 
 type PreviewOptions = {
   bpm: number;
@@ -65,9 +65,25 @@ export class PhrasePreviewEngine {
 
       event.notes.forEach((note) => {
         const frequency = getFrequency(note.string, note.fret, this.options.halfStepDown);
+        const targetFrequency =
+          event.notes.length === 1 && event.technique
+            ? getFrequency(
+                note.string,
+                event.technique.toFret,
+                this.options.halfStepDown,
+              )
+            : null;
 
         if (frequency) {
-          this.schedulePluck(output, frequency, eventTime, duration, event.notes.length);
+          this.schedulePluck(
+            output,
+            frequency,
+            targetFrequency,
+            event.technique?.type,
+            eventTime,
+            duration,
+            event.notes.length,
+          );
         }
       });
     });
@@ -100,6 +116,8 @@ export class PhrasePreviewEngine {
   private schedulePluck(
     output: GainNode,
     frequency: number,
+    targetFrequency: number | null,
+    techniqueType: TabTechnique["type"] | undefined,
     time: number,
     duration: number,
     noteCount: number,
@@ -116,6 +134,7 @@ export class PhrasePreviewEngine {
 
     oscillator.type = "triangle";
     oscillator.frequency.setValueAtTime(frequency, time);
+    this.applyTechnique(oscillator, frequency, targetFrequency, techniqueType, time, duration);
 
     filter.type = "lowpass";
     filter.frequency.setValueAtTime(1800, time);
@@ -128,6 +147,31 @@ export class PhrasePreviewEngine {
     oscillator.connect(filter).connect(gain).connect(output);
     oscillator.start(time);
     oscillator.stop(endTime + 0.02);
+  }
+
+  private applyTechnique(
+    oscillator: OscillatorNode,
+    frequency: number,
+    targetFrequency: number | null,
+    techniqueType: TabTechnique["type"] | undefined,
+    time: number,
+    duration: number,
+  ) {
+    if (!targetFrequency) {
+      return;
+    }
+
+    const transitionStart = time + Math.max(duration * 0.42, 0.035);
+    const transitionEnd =
+      techniqueType === "slide"
+        ? time + Math.max(duration * 0.86, 0.08)
+        : transitionStart + 0.018;
+
+    oscillator.frequency.setValueAtTime(frequency, transitionStart);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      targetFrequency,
+      transitionEnd,
+    );
   }
 }
 
