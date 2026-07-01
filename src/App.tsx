@@ -8,11 +8,12 @@ import {
 } from "./audioEngine";
 import { phrases, type Difficulty } from "./phrases";
 import TabNotation, { type TabEvent } from "./TabNotation";
+import VexFlowTabNotation from "./VexFlowTabNotation";
 
 type DifficultyFilter = "all" | Difficulty;
 type BarFilter = "all" | "1" | "2";
 type SortMode = "library" | "title" | "difficulty" | "bars";
-type ViewMode = "detail" | "compact";
+type ViewMode = "detail" | "compact" | "vexflow";
 
 const KEY_OPTIONS: MusicalKey[] = [
   "A",
@@ -96,6 +97,7 @@ const VIEW_OPTIONS: Array<{
 }> = [
   { id: "detail", label: "Detail" },
   { id: "compact", label: "Compact" },
+  { id: "vexflow", label: "VexFlow" },
 ];
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = {
@@ -289,6 +291,7 @@ function App() {
   const keyLabel = `${practiceKey} ${scaleMode}`;
   const tuningLabel = halfStepDown ? "Half step down" : "Standard";
   const isCompactView = viewMode === "compact";
+  const isVexFlowView = viewMode === "vexflow";
 
   const updateLevel = (level: keyof AudioLevels, value: number) => {
     setLevels((currentLevels) => ({
@@ -512,6 +515,7 @@ function App() {
           visiblePhrases.map((phrase) => {
             const isFavorite = favoritePhraseIdSet.has(phrase.id);
             const difficultyClass = phrase.difficulty.toLowerCase();
+            const transposedEvents = transposeTabEvents(phrase.tabEvents, keyOffset);
 
             return (
               <article
@@ -544,12 +548,20 @@ function App() {
                     <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
                   </div>
                 ) : null}
-                <TabNotation
-                  compact={isCompactView}
-                  events={transposeTabEvents(phrase.tabEvents, keyOffset)}
-                  totalSteps={phrase.totalSteps}
-                  title={phrase.title}
-                />
+                {isVexFlowView ? (
+                  <VexFlowTabNotation
+                    events={transposedEvents}
+                    totalSteps={phrase.totalSteps}
+                    title={phrase.title}
+                  />
+                ) : (
+                  <TabNotation
+                    compact={isCompactView}
+                    events={transposedEvents}
+                    totalSteps={phrase.totalSteps}
+                    title={phrase.title}
+                  />
+                )}
               </article>
             );
           })
