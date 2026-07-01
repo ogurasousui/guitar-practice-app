@@ -6,6 +6,7 @@ import {
   type RhythmPatternId,
   type ScaleMode,
 } from "./audioEngine";
+import { PhrasePreviewEngine } from "./phrasePreviewEngine";
 import { phrases, type Difficulty } from "./phrases";
 import TabNotation, { type TabEvent } from "./TabNotation";
 
@@ -146,9 +147,11 @@ function App() {
     getStoredFavoritePhraseIds,
   );
   const [isPlaying, setIsPlaying] = useState(false);
+  const [previewingPhraseId, setPreviewingPhraseId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const engineRef = useRef<BackingTrackEngine | null>(null);
+  const previewEngineRef = useRef<PhrasePreviewEngine | null>(null);
   const {
     bpm,
     practiceKey,
@@ -204,6 +207,7 @@ function App() {
   useEffect(() => {
     return () => {
       engineRef.current?.stop();
+      previewEngineRef.current?.stop(false);
     };
   }, []);
 
@@ -264,6 +268,10 @@ function App() {
     }
 
     setAudioError(null);
+    previewEngineRef.current?.stop(false);
+    previewEngineRef.current = null;
+    setPreviewingPhraseId(null);
+
     const engine = new BackingTrackEngine(bpm, setCurrentStep, {
       key: practiceKey,
       scaleMode,
@@ -301,6 +309,47 @@ function App() {
     setIsPlaying(false);
     setCurrentStep(0);
   }, []);
+
+  const handlePreview = useCallback(
+    async (phraseId: string, events: TabEvent[], totalSteps: number) => {
+      if (previewingPhraseId === phraseId) {
+        previewEngineRef.current?.stop();
+        previewEngineRef.current = null;
+        return;
+      }
+
+      setAudioError(null);
+      previewEngineRef.current?.stop(false);
+      previewEngineRef.current = null;
+
+      const previewEngine = new PhrasePreviewEngine({
+        bpm,
+        halfStepDown,
+        events,
+        totalSteps,
+        onEnded: () => {
+          previewEngineRef.current = null;
+          setPreviewingPhraseId((currentPhraseId) =>
+            currentPhraseId === phraseId ? null : currentPhraseId,
+          );
+        },
+      });
+      previewEngineRef.current = previewEngine;
+      setPreviewingPhraseId(phraseId);
+
+      try {
+        await previewEngine.start();
+      } catch (error) {
+        previewEngine.stop(false);
+        previewEngineRef.current = null;
+        setPreviewingPhraseId(null);
+        setAudioError(
+          error instanceof Error ? error.message : "Could not preview phrase.",
+        );
+      }
+    },
+    [bpm, halfStepDown, previewingPhraseId],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -604,6 +653,7 @@ function App() {
           visiblePhrases.map((phrase) => {
             const isFavorite = favoritePhraseIdSet.has(phrase.id);
             const isSelected = phrase.id === selectedPhrase.id;
+            const isPreviewing = phrase.id === previewingPhraseId;
             const difficultyClass = phrase.difficulty.toLowerCase();
             const transposedEvents = transposeTabEvents(phrase.tabEvents, keyOffset);
 
@@ -630,16 +680,32 @@ function App() {
                     />
                     <span>{isCompactView ? "Fav" : "Favorite"}</span>
                   </label>
-                  <button
-                    className="practice-select-button"
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() =>
-                      updatePracticeSettings({ selectedPhraseId: phrase.id })
-                    }
-                  >
-                    {isSelected ? "Practicing" : "Practice"}
-                  </button>
+                  <div className="phrase-action-row">
+                    <button
+                      className="practice-select-button"
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() =>
+                        updatePracticeSettings({ selectedPhraseId: phrase.id })
+                      }
+                    >
+                      {isSelected ? "Practicing" : "Practice"}
+                    </button>
+                    <button
+                      className="preview-button"
+                      type="button"
+                      aria-pressed={isPreviewing}
+                      onClick={() =>
+                        void handlePreview(
+                          phrase.id,
+                          transposedEvents,
+                          phrase.totalSteps,
+                        )
+                      }
+                    >
+                      {isPreviewing ? "Stop" : "Preview"}
+                    </button>
+                  </div>
                 </div>
                 {!isCompactView ? (
                   <div className="phrase-meta">

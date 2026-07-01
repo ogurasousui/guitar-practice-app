@@ -388,8 +388,15 @@ h1 {
   accent-color: #2f7a63;
 }
 
-.practice-select-button {
+.phrase-action-row {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.practice-select-button,
+.preview-button {
   justify-self: start;
   min-height: 34px;
   padding: 0 12px;
@@ -407,6 +414,16 @@ h1 {
   color: #ffffff;
 }
 
+.preview-button {
+  border-color: #2f7a63;
+  color: #2f7a63;
+}
+
+.preview-button[aria-pressed="true"] {
+  background: #2f7a63;
+  color: #ffffff;
+}
+
 .phrase-card-compact .favorite-control {
   gap: 4px;
   font-size: 0.72rem;
@@ -417,7 +434,12 @@ h1 {
   height: 15px;
 }
 
-.phrase-card-compact .practice-select-button {
+.phrase-card-compact .phrase-action-row {
+  gap: 6px;
+}
+
+.phrase-card-compact .practice-select-button,
+.phrase-card-compact .preview-button {
   min-height: 30px;
   padding: 0 10px;
   font-size: 0.72rem;

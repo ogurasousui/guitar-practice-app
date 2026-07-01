@@ -8,6 +8,12 @@ test("plays the selected two-bar phrase and persists BPM", async ({ page }) => {
   ).toBeVisible();
   await expect(page.locator(".tab-notation-canvas svg").first()).toBeVisible();
 
+  const firstCard = page.locator("article").first();
+  await firstCard.getByRole("button", { name: "Preview" }).click();
+  await expect(firstCard.getByRole("button", { name: "Stop" })).toBeVisible();
+  await firstCard.getByRole("button", { name: "Stop" }).click();
+  await expect(firstCard.getByRole("button", { name: "Preview" })).toBeVisible();
+
   const twoBarCard = page.locator("article").filter({ hasText: "Two Bar Run" });
   await twoBarCard.getByRole("button", { name: "Practice" }).click();
   await expect(page.locator(".meter-band")).toContainText("Two Bar Run");
