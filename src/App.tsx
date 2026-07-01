@@ -8,12 +8,24 @@ import {
 } from "./audioEngine";
 import { phrases, type Difficulty } from "./phrases";
 import TabNotation, { type TabEvent } from "./TabNotation";
-import VexFlowTabNotation from "./VexFlowTabNotation";
 
 type DifficultyFilter = "all" | Difficulty;
 type BarFilter = "all" | "1" | "2";
 type SortMode = "library" | "title" | "difficulty" | "bars";
-type ViewMode = "detail" | "compact" | "vexflow";
+type ViewMode = "detail" | "compact";
+type PracticeSettings = {
+  bpm: number;
+  practiceKey: MusicalKey;
+  scaleMode: ScaleMode;
+  halfStepDown: boolean;
+  rhythmPattern: RhythmPatternId;
+  levels: AudioLevels;
+  difficultyFilter: DifficultyFilter;
+  barFilter: BarFilter;
+  sortMode: SortMode;
+  viewMode: ViewMode;
+  selectedPhraseId: string;
+};
 
 const KEY_OPTIONS: MusicalKey[] = [
   "A",
@@ -97,7 +109,6 @@ const VIEW_OPTIONS: Array<{
 }> = [
   { id: "detail", label: "Detail" },
   { id: "compact", label: "Compact" },
-  { id: "vexflow", label: "VexFlow" },
 ];
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = {
@@ -107,24 +118,29 @@ const DIFFICULTY_RANK: Record<Difficulty, number> = {
 };
 
 const FAVORITE_STORAGE_KEY = "guitar-practice-favorite-phrases";
-
-function App() {
-  const [bpm, setBpm] = useState(90);
-  const [practiceKey, setPracticeKey] = useState<MusicalKey>("A");
-  const [scaleMode, setScaleMode] = useState<ScaleMode>("minor");
-  const [halfStepDown, setHalfStepDown] = useState(false);
-  const [rhythmPattern, setRhythmPattern] =
-    useState<RhythmPatternId>("straight-rock");
-  const [levels, setLevels] = useState<AudioLevels>({
+const PRACTICE_SETTINGS_STORAGE_KEY = "guitar-practice-settings";
+const DEFAULT_PRACTICE_SETTINGS: PracticeSettings = {
+  bpm: 90,
+  practiceKey: "A",
+  scaleMode: "minor",
+  halfStepDown: false,
+  rhythmPattern: "straight-rock",
+  levels: {
     master: 0.72,
     drums: 0.9,
     bass: 0.85,
-  });
-  const [difficultyFilter, setDifficultyFilter] =
-    useState<DifficultyFilter>("all");
-  const [barFilter, setBarFilter] = useState<BarFilter>("all");
-  const [sortMode, setSortMode] = useState<SortMode>("library");
-  const [viewMode, setViewMode] = useState<ViewMode>("detail");
+  },
+  difficultyFilter: "all",
+  barFilter: "all",
+  sortMode: "library",
+  viewMode: "detail",
+  selectedPhraseId: phrases[0]?.id ?? "",
+};
+
+function App() {
+  const [practiceSettings, setPracticeSettings] = useState<PracticeSettings>(
+    getStoredPracticeSettings,
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [favoritePhraseIds, setFavoritePhraseIds] = useState<string[]>(
     getStoredFavoritePhraseIds,
@@ -133,6 +149,21 @@ function App() {
   const [currentStep, setCurrentStep] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const engineRef = useRef<BackingTrackEngine | null>(null);
+  const {
+    bpm,
+    practiceKey,
+    scaleMode,
+    halfStepDown,
+    rhythmPattern,
+    levels,
+    difficultyFilter,
+    barFilter,
+    sortMode,
+    viewMode,
+    selectedPhraseId,
+  } = practiceSettings;
+  const selectedPhrase =
+    phrases.find((phrase) => phrase.id === selectedPhraseId) ?? phrases[0]!;
 
   useEffect(() => {
     engineRef.current?.setBpm(bpm);
@@ -157,6 +188,14 @@ function App() {
   useEffect(() => {
     engineRef.current?.setLevels(levels);
   }, [levels]);
+
+  useEffect(() => {
+    engineRef.current?.setLoopSteps(selectedPhrase.totalSteps);
+  }, [selectedPhrase.totalSteps]);
+
+  useEffect(() => {
+    storePracticeSettings(practiceSettings);
+  }, [practiceSettings]);
 
   useEffect(() => {
     storeFavoritePhraseIds(favoritePhraseIds);
@@ -231,6 +270,7 @@ function App() {
       halfStepDown,
       rhythmPattern,
       levels,
+      loopSteps: selectedPhrase.totalSteps,
     });
     engineRef.current = engine;
 
@@ -245,7 +285,15 @@ function App() {
         error instanceof Error ? error.message : "Could not start audio.",
       );
     }
-  }, [bpm, halfStepDown, levels, practiceKey, rhythmPattern, scaleMode]);
+  }, [
+    bpm,
+    halfStepDown,
+    levels,
+    practiceKey,
+    rhythmPattern,
+    scaleMode,
+    selectedPhrase.totalSteps,
+  ]);
 
   const handleStop = useCallback(() => {
     engineRef.current?.stop();
@@ -283,7 +331,9 @@ function App() {
     });
   };
 
-  const currentBeat = Math.floor(currentStep / 4) + 1;
+  const currentBar = Math.floor(currentStep / 16) + 1;
+  const currentBeat = Math.floor((currentStep % 16) / 4) + 1;
+  const selectedPhraseBars = Math.max(selectedPhrase.bars, 1);
   const rhythmLabel =
     RHYTHM_PATTERNS.find((pattern) => pattern.id === rhythmPattern)?.label ??
     "Straight Rock";
@@ -291,12 +341,21 @@ function App() {
   const keyLabel = `${practiceKey} ${scaleMode}`;
   const tuningLabel = halfStepDown ? "Half step down" : "Standard";
   const isCompactView = viewMode === "compact";
-  const isVexFlowView = viewMode === "vexflow";
+
+  const updatePracticeSettings = (settings: Partial<PracticeSettings>) => {
+    setPracticeSettings((currentSettings) => ({
+      ...currentSettings,
+      ...settings,
+    }));
+  };
 
   const updateLevel = (level: keyof AudioLevels, value: number) => {
-    setLevels((currentLevels) => ({
-      ...currentLevels,
-      [level]: value,
+    setPracticeSettings((currentSettings) => ({
+      ...currentSettings,
+      levels: {
+        ...currentSettings.levels,
+        [level]: value,
+      },
     }));
   };
 
@@ -336,7 +395,9 @@ function App() {
               min="60"
               max="160"
               value={bpm}
-              onChange={(event) => setBpm(Number(event.target.value))}
+              onChange={(event) =>
+                updatePracticeSettings({ bpm: Number(event.target.value) })
+              }
             />
           </label>
         </div>
@@ -353,7 +414,11 @@ function App() {
           <span>Key</span>
           <select
             value={practiceKey}
-            onChange={(event) => setPracticeKey(event.target.value as MusicalKey)}
+            onChange={(event) =>
+              updatePracticeSettings({
+                practiceKey: event.target.value as MusicalKey,
+              })
+            }
           >
             {KEY_OPTIONS.map((key) => (
               <option key={key} value={key}>
@@ -366,7 +431,11 @@ function App() {
           <span>Scale</span>
           <select
             value={scaleMode}
-            onChange={(event) => setScaleMode(event.target.value as ScaleMode)}
+            onChange={(event) =>
+              updatePracticeSettings({
+                scaleMode: event.target.value as ScaleMode,
+              })
+            }
           >
             {SCALE_MODES.map((mode) => (
               <option key={mode.id} value={mode.id}>
@@ -381,7 +450,9 @@ function App() {
             aria-label="Half step down tuning"
             checked={halfStepDown}
             type="checkbox"
-            onChange={(event) => setHalfStepDown(event.target.checked)}
+            onChange={(event) =>
+              updatePracticeSettings({ halfStepDown: event.target.checked })
+            }
           />
           <strong>{halfStepDown ? "Half Down" : "Standard"}</strong>
         </label>
@@ -390,7 +461,9 @@ function App() {
           <select
             value={rhythmPattern}
             onChange={(event) =>
-              setRhythmPattern(event.target.value as RhythmPatternId)
+              updatePracticeSettings({
+                rhythmPattern: event.target.value as RhythmPatternId,
+              })
             }
           >
             {RHYTHM_PATTERNS.map((pattern) => (
@@ -427,7 +500,15 @@ function App() {
         </div>
         <div>
           <span className="meter-label">Beat</span>
-          <strong>{isPlaying ? `${currentBeat}/4` : "4/4"}</strong>
+          <strong>
+            {isPlaying
+              ? `Bar ${currentBar}/${selectedPhraseBars} beat ${currentBeat}/4`
+              : `${selectedPhraseBars} bar loop`}
+          </strong>
+        </div>
+        <div>
+          <span className="meter-label">Phrase</span>
+          <strong>{selectedPhrase.title}</strong>
         </div>
         <div>
           <span className="meter-label">Rhythm</span>
@@ -450,7 +531,9 @@ function App() {
           <select
             value={difficultyFilter}
             onChange={(event) =>
-              setDifficultyFilter(event.target.value as DifficultyFilter)
+              updatePracticeSettings({
+                difficultyFilter: event.target.value as DifficultyFilter,
+              })
             }
           >
             {DIFFICULTY_FILTERS.map((filter) => (
@@ -464,7 +547,9 @@ function App() {
           <span>Bars</span>
           <select
             value={barFilter}
-            onChange={(event) => setBarFilter(event.target.value as BarFilter)}
+            onChange={(event) =>
+              updatePracticeSettings({ barFilter: event.target.value as BarFilter })
+            }
           >
             {BAR_FILTERS.map((filter) => (
               <option key={filter.id} value={filter.id}>
@@ -477,7 +562,9 @@ function App() {
           <span>Sort</span>
           <select
             value={sortMode}
-            onChange={(event) => setSortMode(event.target.value as SortMode)}
+            onChange={(event) =>
+              updatePracticeSettings({ sortMode: event.target.value as SortMode })
+            }
           >
             {SORT_OPTIONS.map((sortOption) => (
               <option key={sortOption.id} value={sortOption.id}>
@@ -490,7 +577,9 @@ function App() {
           <span>View</span>
           <select
             value={viewMode}
-            onChange={(event) => setViewMode(event.target.value as ViewMode)}
+            onChange={(event) =>
+              updatePracticeSettings({ viewMode: event.target.value as ViewMode })
+            }
           >
             {VIEW_OPTIONS.map((viewOption) => (
               <option key={viewOption.id} value={viewOption.id}>
@@ -514,6 +603,7 @@ function App() {
         {visiblePhrases.length > 0 ? (
           visiblePhrases.map((phrase) => {
             const isFavorite = favoritePhraseIdSet.has(phrase.id);
+            const isSelected = phrase.id === selectedPhrase.id;
             const difficultyClass = phrase.difficulty.toLowerCase();
             const transposedEvents = transposeTabEvents(phrase.tabEvents, keyOffset);
 
@@ -521,7 +611,7 @@ function App() {
               <article
                 className={`phrase-card ${isCompactView ? "phrase-card-compact" : ""} ${
                   isFavorite ? "phrase-card-favorite" : ""
-                }`}
+                } ${isSelected ? "phrase-card-selected" : ""}`}
                 key={phrase.id}
               >
                 <div className="phrase-header">
@@ -540,6 +630,16 @@ function App() {
                     />
                     <span>{isCompactView ? "Fav" : "Favorite"}</span>
                   </label>
+                  <button
+                    className="practice-select-button"
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() =>
+                      updatePracticeSettings({ selectedPhraseId: phrase.id })
+                    }
+                  >
+                    {isSelected ? "Practicing" : "Practice"}
+                  </button>
                 </div>
                 {!isCompactView ? (
                   <div className="phrase-meta">
@@ -548,20 +648,12 @@ function App() {
                     <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
                   </div>
                 ) : null}
-                {isVexFlowView ? (
-                  <VexFlowTabNotation
-                    events={transposedEvents}
-                    totalSteps={phrase.totalSteps}
-                    title={phrase.title}
-                  />
-                ) : (
-                  <TabNotation
-                    compact={isCompactView}
-                    events={transposedEvents}
-                    totalSteps={phrase.totalSteps}
-                    title={phrase.title}
-                  />
-                )}
+                <TabNotation
+                  compact={isCompactView}
+                  events={transposedEvents}
+                  totalSteps={phrase.totalSteps}
+                  title={phrase.title}
+                />
               </article>
             );
           })
@@ -590,6 +682,92 @@ function getStoredFavoritePhraseIds() {
   }
 }
 
+function getStoredPracticeSettings(): PracticeSettings {
+  if (typeof window === "undefined") {
+    return DEFAULT_PRACTICE_SETTINGS;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(PRACTICE_SETTINGS_STORAGE_KEY);
+    const parsedValue: unknown = storedValue ? JSON.parse(storedValue) : null;
+
+    if (!isRecord(parsedValue)) {
+      return DEFAULT_PRACTICE_SETTINGS;
+    }
+
+    const levels = isRecord(parsedValue.levels) ? parsedValue.levels : {};
+
+    return {
+      bpm: normalizeNumber(parsedValue.bpm, 60, 160, DEFAULT_PRACTICE_SETTINGS.bpm),
+      practiceKey: isMusicalKey(parsedValue.practiceKey)
+        ? parsedValue.practiceKey
+        : DEFAULT_PRACTICE_SETTINGS.practiceKey,
+      scaleMode: isScaleMode(parsedValue.scaleMode)
+        ? parsedValue.scaleMode
+        : DEFAULT_PRACTICE_SETTINGS.scaleMode,
+      halfStepDown:
+        typeof parsedValue.halfStepDown === "boolean"
+          ? parsedValue.halfStepDown
+          : DEFAULT_PRACTICE_SETTINGS.halfStepDown,
+      rhythmPattern: isRhythmPatternId(parsedValue.rhythmPattern)
+        ? parsedValue.rhythmPattern
+        : DEFAULT_PRACTICE_SETTINGS.rhythmPattern,
+      levels: {
+        master: normalizeNumber(
+          levels.master,
+          0,
+          1,
+          DEFAULT_PRACTICE_SETTINGS.levels.master,
+        ),
+        drums: normalizeNumber(
+          levels.drums,
+          0,
+          1,
+          DEFAULT_PRACTICE_SETTINGS.levels.drums,
+        ),
+        bass: normalizeNumber(
+          levels.bass,
+          0,
+          1,
+          DEFAULT_PRACTICE_SETTINGS.levels.bass,
+        ),
+      },
+      difficultyFilter: isDifficultyFilter(parsedValue.difficultyFilter)
+        ? parsedValue.difficultyFilter
+        : DEFAULT_PRACTICE_SETTINGS.difficultyFilter,
+      barFilter: isBarFilter(parsedValue.barFilter)
+        ? parsedValue.barFilter
+        : DEFAULT_PRACTICE_SETTINGS.barFilter,
+      sortMode: isSortMode(parsedValue.sortMode)
+        ? parsedValue.sortMode
+        : DEFAULT_PRACTICE_SETTINGS.sortMode,
+      viewMode: isViewMode(parsedValue.viewMode)
+        ? parsedValue.viewMode
+        : DEFAULT_PRACTICE_SETTINGS.viewMode,
+      selectedPhraseId: isPhraseId(parsedValue.selectedPhraseId)
+        ? parsedValue.selectedPhraseId
+        : DEFAULT_PRACTICE_SETTINGS.selectedPhraseId,
+    };
+  } catch {
+    return DEFAULT_PRACTICE_SETTINGS;
+  }
+}
+
+function storePracticeSettings(practiceSettings: PracticeSettings) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      PRACTICE_SETTINGS_STORAGE_KEY,
+      JSON.stringify(practiceSettings),
+    );
+  } catch {
+    // Practice settings are recoverable; ignore storage failures in private browsing modes.
+  }
+}
+
 function storeFavoritePhraseIds(favoritePhraseIds: string[]) {
   if (typeof window === "undefined") {
     return;
@@ -603,6 +781,55 @@ function storeFavoritePhraseIds(favoritePhraseIds: string[]) {
   } catch {
     // Favorites are optional; ignore storage failures in private browsing modes.
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeNumber(
+  value: unknown,
+  min: number,
+  max: number,
+  fallback: number,
+) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(value, min), max);
+}
+
+function isMusicalKey(value: unknown): value is MusicalKey {
+  return KEY_OPTIONS.includes(value as MusicalKey);
+}
+
+function isScaleMode(value: unknown): value is ScaleMode {
+  return SCALE_MODES.some((mode) => mode.id === value);
+}
+
+function isRhythmPatternId(value: unknown): value is RhythmPatternId {
+  return RHYTHM_PATTERNS.some((pattern) => pattern.id === value);
+}
+
+function isDifficultyFilter(value: unknown): value is DifficultyFilter {
+  return DIFFICULTY_FILTERS.some((filter) => filter.id === value);
+}
+
+function isBarFilter(value: unknown): value is BarFilter {
+  return BAR_FILTERS.some((filter) => filter.id === value);
+}
+
+function isSortMode(value: unknown): value is SortMode {
+  return SORT_OPTIONS.some((sortOption) => sortOption.id === value);
+}
+
+function isViewMode(value: unknown): value is ViewMode {
+  return VIEW_OPTIONS.some((viewOption) => viewOption.id === value);
+}
+
+function isPhraseId(value: unknown): value is string {
+  return typeof value === "string" && phrases.some((phrase) => phrase.id === value);
 }
 
 function isKeyboardInputTarget(target: EventTarget | null) {

@@ -30,6 +30,7 @@ export type BackingTrackOptions = {
   halfStepDown: boolean;
   rhythmPattern: RhythmPatternId;
   levels: AudioLevels;
+  loopSteps: number;
 };
 
 declare global {
@@ -71,6 +72,7 @@ export class BackingTrackEngine {
   private stepTimeoutIds: number[] = [];
   private nextStepTime = 0;
   private step = 0;
+  private loopSteps: number;
   private bpm: number;
   private key: MusicalKey;
   private scaleMode: ScaleMode;
@@ -91,6 +93,7 @@ export class BackingTrackEngine {
     this.halfStepDown = options.halfStepDown;
     this.rhythmPattern = options.rhythmPattern;
     this.levels = options.levels;
+    this.loopSteps = normalizeLoopSteps(options.loopSteps);
   }
 
   async start() {
@@ -171,6 +174,11 @@ export class BackingTrackEngine {
     this.applyLevels();
   }
 
+  setLoopSteps(loopSteps: number) {
+    this.loopSteps = normalizeLoopSteps(loopSteps);
+    this.step %= this.loopSteps;
+  }
+
   private applyLevels() {
     if (!this.audioContext || !this.master || !this.drums || !this.bass) {
       return;
@@ -194,28 +202,29 @@ export class BackingTrackEngine {
       this.scheduleStep(this.step, this.nextStepTime);
       this.queueStepUpdate(this.step, this.nextStepTime);
       this.nextStepTime += this.getStepDuration();
-      this.step = (this.step + 1) % STEPS_PER_BAR;
+      this.step = (this.step + 1) % this.loopSteps;
     }
   }
 
   private scheduleStep(step: number, time: number) {
     const drumPattern = this.getDrumPattern();
+    const patternStep = step % STEPS_PER_BAR;
 
-    if (drumPattern.hats.includes(step)) {
-      this.scheduleHiHat(time, step % 4 === 0 ? 0.2 : 0.13);
+    if (drumPattern.hats.includes(patternStep)) {
+      this.scheduleHiHat(time, patternStep % 4 === 0 ? 0.2 : 0.13);
     }
 
-    if (drumPattern.kicks.includes(step)) {
+    if (drumPattern.kicks.includes(patternStep)) {
       this.scheduleKick(time);
     }
 
-    if (drumPattern.snares.includes(step)) {
+    if (drumPattern.snares.includes(patternStep)) {
       this.scheduleSnare(time);
     }
 
-    const bassIndex = drumPattern.bass.indexOf(step);
+    const bassIndex = drumPattern.bass.indexOf(patternStep);
     if (bassIndex >= 0) {
-      this.scheduleBass(step, time, bassIndex);
+      this.scheduleBass(patternStep, time, bassIndex);
     }
   }
 
@@ -371,4 +380,15 @@ export class BackingTrackEngine {
     source.buffer = buffer;
     return source;
   }
+}
+
+function normalizeLoopSteps(loopSteps: number) {
+  if (!Number.isFinite(loopSteps)) {
+    return STEPS_PER_BAR;
+  }
+
+  return Math.max(
+    STEPS_PER_BAR,
+    Math.round(loopSteps / STEPS_PER_BAR) * STEPS_PER_BAR,
+  );
 }
