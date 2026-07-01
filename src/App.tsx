@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BackingTrackEngine,
   type AudioLevels,
@@ -217,7 +217,7 @@ function App() {
       });
   }, [barFilter, difficultyFilter, favoritePhraseIdSet, searchTerm, sortMode]);
 
-  const handlePlay = async () => {
+  const handlePlay = useCallback(async () => {
     if (engineRef.current) {
       return;
     }
@@ -243,14 +243,33 @@ function App() {
         error instanceof Error ? error.message : "Could not start audio.",
       );
     }
-  };
+  }, [bpm, halfStepDown, levels, practiceKey, rhythmPattern, scaleMode]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     engineRef.current?.stop();
     engineRef.current = null;
     setIsPlaying(false);
     setCurrentStep(0);
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat || isKeyboardInputTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (engineRef.current) {
+        handleStop();
+      } else {
+        void handlePlay();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePlay, handleStop]);
 
   const toggleFavoritePhrase = (phraseId: string) => {
     setFavoritePhraseIds((currentFavoritePhraseIds) => {
@@ -572,6 +591,21 @@ function storeFavoritePhraseIds(favoritePhraseIds: string[]) {
   } catch {
     // Favorites are optional; ignore storage failures in private browsing modes.
   }
+}
+
+function isKeyboardInputTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === "input" ||
+    tagName === "select" ||
+    tagName === "textarea" ||
+    tagName === "button"
+  );
 }
 
 function getScaleOffset(scaleMode: ScaleMode) {
