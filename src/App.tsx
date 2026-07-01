@@ -924,15 +924,24 @@ function transposeTabEvents(events: TabEvent[], semitones: number): TabEvent[] {
 
   return events.map((event) => ({
     ...event,
+    technique: event.technique
+      ? {
+          ...event.technique,
+          toFret: transposeFret(event.technique.toFret, semitones),
+        }
+      : undefined,
     notes: event.notes.map((note) => {
-      const fret = Number(note.fret);
-
       return {
         ...note,
-        fret: Number.isFinite(fret) ? String(fret + semitones) : note.fret,
+        fret: transposeFret(note.fret, semitones),
       };
     }),
   }));
+}
+
+function transposeFret(fretText: string, semitones: number) {
+  const fret = Number(fretText);
+  return Number.isFinite(fret) ? String(fret + semitones) : fretText;
 }
 
 export default App;

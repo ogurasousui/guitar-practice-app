@@ -14,6 +14,14 @@ test("plays the selected two-bar phrase and persists BPM", async ({ page }) => {
   await firstCard.getByRole("button", { name: "Stop" }).click();
   await expect(firstCard.getByRole("button", { name: "Preview" })).toBeVisible();
 
+  await page.getByPlaceholder("Phrase or memo").fill("Hammer Box Hook");
+  const hammerCard = page.locator("article").filter({ hasText: "Hammer Box Hook" });
+  await expect(hammerCard).toBeVisible();
+  await hammerCard.getByRole("button", { name: "Preview" }).click();
+  await expect(hammerCard.getByRole("button", { name: "Stop" })).toBeVisible();
+  await hammerCard.getByRole("button", { name: "Stop" }).click();
+  await page.getByPlaceholder("Phrase or memo").fill("");
+
   const twoBarCard = page.locator("article").filter({ hasText: "Two Bar Run" });
   await twoBarCard.getByRole("button", { name: "Practice" }).click();
   await expect(page.locator(".meter-band")).toContainText("Two Bar Run");
