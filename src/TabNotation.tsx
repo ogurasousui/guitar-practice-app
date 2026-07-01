@@ -17,11 +17,10 @@ type TabNotationProps = {
 };
 
 const STRING_LABELS = ["e", "B", "G", "D", "A", "E"];
-const VIEWBOX_WIDTH = 760;
-const TOP_Y = 44;
-const STRING_GAP = 26;
-const START_X = 58;
-const END_X = 728;
+const TOP_Y = 34;
+const STRING_GAP = 22;
+const START_X = 46;
+const END_X = 610;
 const WIDTH = END_X - START_X;
 
 function getStringY(string: number) {
@@ -43,26 +42,22 @@ function getStepX(step: number, totalSteps: number) {
   return START_X + (step / totalSteps) * WIDTH;
 }
 
-function getStemFlagPath(x: number, stemTop: number, duration: TabDuration) {
+function getFlagPath(x: number, stemTop: number, duration: TabDuration) {
   if (duration === "quarter") {
     return null;
   }
 
-  const firstFlag = `M ${x + 12} ${stemTop} q 20 8 5 23`;
+  const firstFlag = `M ${x + 11} ${stemTop} q 18 8 4 22`;
 
   if (duration === "eighth") {
     return firstFlag;
   }
 
-  return `${firstFlag} M ${x + 12} ${stemTop + 10} q 20 8 5 23`;
+  return `${firstFlag} M ${x + 11} ${stemTop + 9} q 18 8 4 22`;
 }
 
 function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
-  const height = compact ? 238 : 270;
-  const beatSteps = Array.from(
-    { length: Math.floor(totalSteps / 4) + 1 },
-    (_, index) => index * 4,
-  );
+  const height = compact ? 176 : 220;
   const barSteps = Array.from(
     { length: Math.floor(totalSteps / 16) + 1 },
     (_, index) => index * 16,
@@ -73,25 +68,18 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
       className="tab-notation"
       role="img"
       aria-label={`${title} tab notation`}
-      viewBox={`0 0 ${VIEWBOX_WIDTH} ${height}`}
+      viewBox={`0 0 640 ${height}`}
     >
-      <rect className="tab-background" width={VIEWBOX_WIDTH} height={height} rx="8" />
-
-      {beatSteps.map((step) => {
-        if (step > totalSteps) {
-          return null;
-        }
-
-        const x = getStepX(step, totalSteps);
+      <rect className="tab-background" width="640" height={height} rx="8" />
+      {STRING_LABELS.map((label, index) => {
+        const y = getStringY(index + 1);
         return (
-          <line
-            className="tab-beat-line"
-            key={`beat-${step}`}
-            x1={x}
-            y1={TOP_Y - 16}
-            x2={x}
-            y2={getStringY(6) + 15}
-          />
+          <g key={label}>
+            <text className="tab-string-label" x="18" y={y + 5}>
+              {label}
+            </text>
+            <line className="tab-string-line" x1={START_X} y1={y} x2={END_X} y2={y} />
+          </g>
         );
       })}
 
@@ -104,57 +92,44 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
         return (
           <line
             className="tab-bar-line"
-            key={`bar-${step}`}
+            key={step}
             x1={x}
-            y1={TOP_Y - 18}
+            y1={TOP_Y - 11}
             x2={x}
-            y2={getStringY(6) + 17}
+            y2={getStringY(6) + 11}
           />
-        );
-      })}
-
-      {STRING_LABELS.map((label, index) => {
-        const y = getStringY(index + 1);
-        return (
-          <g key={label}>
-            <text className="tab-string-label" x="20" y={y + 5}>
-              {label}
-            </text>
-            <line className="tab-string-line" x1={START_X} y1={y} x2={END_X} y2={y} />
-          </g>
         );
       })}
 
       {events.map((event, index) => {
         const x = getStepX(event.step, totalSteps);
-        const stemTop = TOP_Y - 28;
-        const stemBottom = Math.min(...event.notes.map((note) => getStringY(note.string))) - 10;
-        const labelY = getStringY(6) + 46;
-        const flagPath = getStemFlagPath(x, stemTop, event.duration);
+        const stemTop = TOP_Y - 24;
+        const stemBottom = Math.min(...event.notes.map((note) => getStringY(note.string))) - 8;
+        const labelY = getStringY(6) + 38;
+        const flagPath = getFlagPath(x, stemTop, event.duration);
 
         return (
           <g key={`${event.step}-${index}`}>
             {!compact ? (
               <>
-                <line className="tab-stem" x1={x + 12} y1={stemTop} x2={x + 12} y2={stemBottom} />
+                <line className="tab-stem" x1={x + 11} y1={stemTop} x2={x + 11} y2={stemBottom} />
                 {flagPath ? <path className="tab-flag" d={flagPath} /> : null}
               </>
             ) : null}
             {event.notes.map((note, noteIndex) => {
-              const badgeWidth = note.fret.length > 1 ? 34 : 28;
-              const y = getStringY(note.string);
+              const badgeWidth = note.fret.length > 1 ? 28 : 22;
 
               return (
                 <g key={`${event.step}-${note.string}-${note.fret}-${noteIndex}`}>
                   <rect
                     className="tab-fret-bg"
                     x={x - badgeWidth / 2}
-                    y={y - 12}
+                    y={getStringY(note.string) - 10}
                     width={badgeWidth}
-                    height="24"
-                    rx="6"
+                    height="20"
+                    rx="4"
                   />
-                  <text className="tab-fret" x={x} y={y + 7}>
+                  <text className="tab-fret" x={x} y={getStringY(note.string) + 6}>
                     {note.fret}
                   </text>
                 </g>
@@ -171,9 +146,9 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
 
       {!compact ? (
         <g className="tab-legend">
-          <text x="58" y={height - 22}>1/4 = quarter</text>
-          <text x="216" y={height - 22}>1/8 = eighth</text>
-          <text x="360" y={height - 22}>1/16 = sixteenth</text>
+          <text x="46" y={height - 20}>1/4 = quarter</text>
+          <text x="188" y={height - 20}>1/8 = eighth</text>
+          <text x="316" y={height - 20}>1/16 = sixteenth</text>
         </g>
       ) : null}
     </svg>
