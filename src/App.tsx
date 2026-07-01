@@ -4,6 +4,7 @@ import {
   type AudioLevels,
   type MusicalKey,
   type RhythmPatternId,
+  type ScaleMode,
 } from "./audioEngine";
 import TabNotation, { type TabEvent } from "./TabNotation";
 
@@ -46,6 +47,14 @@ const KEY_OFFSETS: Record<MusicalKey, number> = {
   G: 10,
   "G#": 11,
 };
+
+const SCALE_MODES: Array<{
+  id: ScaleMode;
+  label: string;
+}> = [
+  { id: "minor", label: "Minor" },
+  { id: "major", label: "Major" },
+];
 
 const RHYTHM_PATTERNS: Array<{
   id: RhythmPatternId;
@@ -263,6 +272,8 @@ const phrases: Phrase[] = [
 function App() {
   const [bpm, setBpm] = useState(90);
   const [practiceKey, setPracticeKey] = useState<MusicalKey>("A");
+  const [scaleMode, setScaleMode] = useState<ScaleMode>("minor");
+  const [halfStepDown, setHalfStepDown] = useState(false);
   const [rhythmPattern, setRhythmPattern] =
     useState<RhythmPatternId>("straight-rock");
   const [levels, setLevels] = useState<AudioLevels>({
@@ -272,11 +283,8 @@ function App() {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedPhraseId, setSelectedPhraseId] = useState(phrases[0].id);
   const [audioError, setAudioError] = useState<string | null>(null);
   const engineRef = useRef<BackingTrackEngine | null>(null);
-  const selectedPhrase =
-    phrases.find((phrase) => phrase.id === selectedPhraseId) ?? phrases[0];
 
   useEffect(() => {
     engineRef.current?.setBpm(bpm);
@@ -285,6 +293,14 @@ function App() {
   useEffect(() => {
     engineRef.current?.setKey(practiceKey);
   }, [practiceKey]);
+
+  useEffect(() => {
+    engineRef.current?.setScaleMode(scaleMode);
+  }, [scaleMode]);
+
+  useEffect(() => {
+    engineRef.current?.setHalfStepDown(halfStepDown);
+  }, [halfStepDown]);
 
   useEffect(() => {
     engineRef.current?.setRhythmPattern(rhythmPattern);
@@ -308,6 +324,8 @@ function App() {
     setAudioError(null);
     const engine = new BackingTrackEngine(bpm, setCurrentStep, {
       key: practiceKey,
+      scaleMode,
+      halfStepDown,
       rhythmPattern,
       levels,
     });
@@ -337,11 +355,9 @@ function App() {
   const rhythmLabel =
     RHYTHM_PATTERNS.find((pattern) => pattern.id === rhythmPattern)?.label ??
     "Straight Rock";
-  const keyOffset = KEY_OFFSETS[practiceKey];
-  const selectedTabEvents = transposeTabEvents(
-    selectedPhrase.tabEvents,
-    keyOffset,
-  );
+  const keyOffset = KEY_OFFSETS[practiceKey] + getScaleOffset(scaleMode);
+  const keyLabel = `${practiceKey} ${scaleMode}`;
+  const tuningLabel = halfStepDown ? "Half step down" : "Standard";
 
   const updateLevel = (level: keyof AudioLevels, value: number) => {
     setLevels((currentLevels) => ({
@@ -354,7 +370,9 @@ function App() {
     <main className="app-shell">
       <section className="control-band" aria-label="Practice controls">
         <div className="brand-block">
-          <p className="eyebrow">{practiceKey} minor pentatonic</p>
+          <p className="eyebrow">
+            {keyLabel} pentatonic / {tuningLabel}
+          </p>
           <h1>Guitar Practice</h1>
         </div>
 
@@ -405,10 +423,33 @@ function App() {
           >
             {KEY_OPTIONS.map((key) => (
               <option key={key} value={key}>
-                {key} minor
+                {key}
               </option>
             ))}
           </select>
+        </label>
+        <label className="select-control">
+          <span>Scale</span>
+          <select
+            value={scaleMode}
+            onChange={(event) => setScaleMode(event.target.value as ScaleMode)}
+          >
+            {SCALE_MODES.map((mode) => (
+              <option key={mode.id} value={mode.id}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="toggle-control">
+          <span>Tuning</span>
+          <input
+            aria-label="Half step down tuning"
+            checked={halfStepDown}
+            type="checkbox"
+            onChange={(event) => setHalfStepDown(event.target.checked)}
+          />
+          <strong>{halfStepDown ? "Half Down" : "Standard"}</strong>
         </label>
         <label className="select-control">
           <span>Rhythm</span>
@@ -460,36 +501,9 @@ function App() {
         </div>
       </section>
 
-      <section className="focus-panel" aria-label="Selected phrase">
-        <div className="focus-copy">
-          <span className="meter-label">Selected phrase</span>
-          <h2>{selectedPhrase.title}</h2>
-          <p>{selectedPhrase.memo}</p>
-          <div className="phrase-meta">
-            <span>{practiceKey} minor</span>
-            <span>
-              {selectedPhrase.bars} bar{selectedPhrase.bars > 1 ? "s" : ""}
-            </span>
-            <span>{selectedPhrase.difficulty}</span>
-          </div>
-        </div>
-        <div className="focus-tab">
-          <TabNotation
-            events={selectedTabEvents}
-            totalSteps={selectedPhrase.totalSteps}
-            title={selectedPhrase.title}
-          />
-        </div>
-      </section>
-
       <section className="phrase-grid" aria-label="Practice phrases">
         {phrases.map((phrase) => (
-          <article
-            className={`phrase-card ${
-              phrase.id === selectedPhrase.id ? "phrase-card-selected" : ""
-            }`}
-            key={phrase.id}
-          >
+          <article className="phrase-card" key={phrase.id}>
             <div className="phrase-header">
               <div>
                 <h2>{phrase.title}</h2>
@@ -498,7 +512,8 @@ function App() {
               <span className="difficulty">{phrase.difficulty}</span>
             </div>
             <div className="phrase-meta">
-              <span>{practiceKey} minor</span>
+              <span>{keyLabel}</span>
+              <span>{tuningLabel}</span>
               <span>{phrase.bars} bar{phrase.bars > 1 ? "s" : ""}</span>
             </div>
             <TabNotation
@@ -507,19 +522,15 @@ function App() {
               totalSteps={phrase.totalSteps}
               title={phrase.title}
             />
-            <button
-              className="select-phrase-button"
-              type="button"
-              aria-pressed={phrase.id === selectedPhrase.id}
-              onClick={() => setSelectedPhraseId(phrase.id)}
-            >
-              {phrase.id === selectedPhrase.id ? "Selected" : "Practice this"}
-            </button>
           </article>
         ))}
       </section>
     </main>
   );
+}
+
+function getScaleOffset(scaleMode: ScaleMode) {
+  return scaleMode === "major" ? -3 : 0;
 }
 
 function transposeTabEvents(events: TabEvent[], semitones: number): TabEvent[] {
