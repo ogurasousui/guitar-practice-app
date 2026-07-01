@@ -138,20 +138,14 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
               </>
             ) : null}
             {event.notes.map((note, noteIndex) => {
-              const badgeWidth = note.fret.length > 1 ? 28 : 22;
-              const y = getStringY(note.string);
               const fingerLabel = getFingerLabel(note.fret, positionFret);
+              const badgeWidth = (note.fret.length > 1 ? 28 : 22) + (fingerLabel ? 10 : 0);
+              const y = getStringY(note.string);
+              const fretX = fingerLabel ? x - 4 : x;
+              const fingerX = x + badgeWidth / 2 - 7;
 
               return (
                 <g key={`${event.step}-${note.string}-${note.fret}-${noteIndex}`}>
-                  {fingerLabel ? (
-                    <>
-                      <circle className="tab-finger-bg" cx={x} cy={y - 17} r="7" />
-                      <text className="tab-finger" x={x} y={y - 13}>
-                        {fingerLabel}
-                      </text>
-                    </>
-                  ) : null}
                   <rect
                     className="tab-fret-bg"
                     x={x - badgeWidth / 2}
@@ -160,9 +154,24 @@ function TabNotation({ events, totalSteps, title, compact }: TabNotationProps) {
                     height="20"
                     rx="4"
                   />
-                  <text className="tab-fret" x={x} y={y + 6}>
+                  <text className="tab-fret" x={fretX} y={y + 6}>
                     {note.fret}
                   </text>
+                  {fingerLabel ? (
+                    <>
+                      <rect
+                        className="tab-finger-bg"
+                        x={fingerX - 5}
+                        y={y - 9}
+                        width="10"
+                        height="10"
+                        rx="3"
+                      />
+                      <text className="tab-finger" x={fingerX} y={y - 4}>
+                        {fingerLabel}
+                      </text>
+                    </>
+                  ) : null}
                 </g>
               );
             })}
