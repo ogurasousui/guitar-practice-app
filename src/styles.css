@@ -34,7 +34,7 @@ button:disabled {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1240px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 42px;
 }
@@ -277,8 +277,8 @@ h1 {
 
 .phrase-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .phrase-card {
@@ -330,6 +330,16 @@ h1 {
   font-weight: 800;
 }
 
+.difficulty-medium {
+  background: #d7b15f;
+  color: #251a0b;
+}
+
+.difficulty-hard {
+  background: #a24b38;
+  color: #ffffff;
+}
+
 .favorite-control {
   grid-column: 1 / -1;
   display: inline-grid;
@@ -379,7 +389,7 @@ h1 {
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 148px;
+  min-height: 226px;
   border-radius: 8px;
 }
 
@@ -391,25 +401,30 @@ h1 {
 .tab-fret,
 .tab-duration,
 .tab-legend {
-  fill: #f7f4ef;
   font-family:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, ui-monospace,
     monospace;
 }
 
 .tab-string-label {
-  font-size: 15px;
+  fill: #f7f4ef;
+  font-size: 16px;
   font-weight: 800;
 }
 
 .tab-string-line {
-  stroke: #cfd2d6;
-  stroke-width: 1.2;
+  stroke: #dfe3e6;
+  stroke-width: 1.4;
+}
+
+.tab-beat-line {
+  stroke: rgba(247, 244, 239, 0.16);
+  stroke-width: 1;
 }
 
 .tab-bar-line {
-  stroke: #f7f4ef;
-  stroke-width: 2;
+  stroke: #f2c36b;
+  stroke-width: 2.4;
 }
 
 .tab-stem,
@@ -421,13 +436,16 @@ h1 {
 }
 
 .tab-fret-bg {
-  fill: #202124;
+  fill: #f7f4ef;
+  stroke: #202124;
+  stroke-width: 1.2;
 }
 
 .tab-fret {
   dominant-baseline: middle;
-  font-size: 16px;
-  font-weight: 800;
+  fill: #15171a;
+  font-size: 18px;
+  font-weight: 900;
   text-anchor: middle;
 }
 
@@ -469,10 +487,6 @@ h1 {
   .library-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .phrase-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 460px) {
@@ -498,5 +512,9 @@ h1 {
 
   .difficulty {
     justify-self: start;
+  }
+
+  .tab-notation {
+    min-height: 202px;
   }
 }
