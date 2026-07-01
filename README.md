@@ -43,6 +43,12 @@ npm run dev
 npm run build
 ```
 
+UI確認:
+
+```sh
+npm run test:e2e
+```
+
 ## 開発フロー
 
 `main` は公開用ブランチです。開発は作業ブランチで行い、PR経由で `main` にマージします。
