@@ -16,6 +16,8 @@ export type MusicalKey =
 
 export type RhythmPatternId = "straight-rock" | "half-time" | "funk-eighths";
 
+export type ScaleMode = "minor" | "major";
+
 export type AudioLevels = {
   master: number;
   drums: number;
@@ -24,6 +26,8 @@ export type AudioLevels = {
 
 export type BackingTrackOptions = {
   key: MusicalKey;
+  scaleMode: ScaleMode;
+  halfStepDown: boolean;
   rhythmPattern: RhythmPatternId;
   levels: AudioLevels;
 };
@@ -53,7 +57,10 @@ const KEY_ROOT_FREQUENCIES: Record<MusicalKey, number> = {
   "G#": 207.65,
 };
 
-const BASS_INTERVALS = [1, 6 / 5, 4 / 3, 3 / 2, 2];
+const BASS_INTERVALS: Record<ScaleMode, number[]> = {
+  minor: [1, 6 / 5, 4 / 3, 3 / 2, 2],
+  major: [1, 5 / 4, 3 / 2, 5 / 3, 2],
+};
 
 export class BackingTrackEngine {
   private audioContext: AudioContext | null = null;
@@ -66,6 +73,8 @@ export class BackingTrackEngine {
   private step = 0;
   private bpm: number;
   private key: MusicalKey;
+  private scaleMode: ScaleMode;
+  private halfStepDown: boolean;
   private rhythmPattern: RhythmPatternId;
   private levels: AudioLevels;
   private readonly onStep: StepListener;
@@ -78,6 +87,8 @@ export class BackingTrackEngine {
     this.bpm = bpm;
     this.onStep = onStep;
     this.key = options.key;
+    this.scaleMode = options.scaleMode;
+    this.halfStepDown = options.halfStepDown;
     this.rhythmPattern = options.rhythmPattern;
     this.levels = options.levels;
   }
@@ -141,6 +152,14 @@ export class BackingTrackEngine {
 
   setKey(key: MusicalKey) {
     this.key = key;
+  }
+
+  setScaleMode(scaleMode: ScaleMode) {
+    this.scaleMode = scaleMode;
+  }
+
+  setHalfStepDown(halfStepDown: boolean) {
+    this.halfStepDown = halfStepDown;
   }
 
   setRhythmPattern(rhythmPattern: RhythmPatternId) {
@@ -306,8 +325,10 @@ export class BackingTrackEngine {
       return;
     }
 
-    const root = KEY_ROOT_FREQUENCIES[this.key];
-    const interval = BASS_INTERVALS[bassIndex % BASS_INTERVALS.length];
+    const root =
+      KEY_ROOT_FREQUENCIES[this.key] * (this.halfStepDown ? 2 ** (-1 / 12) : 1);
+    const scaleIntervals = BASS_INTERVALS[this.scaleMode];
+    const interval = scaleIntervals[bassIndex % scaleIntervals.length];
     const note = root * interval;
     const oscillator = this.audioContext.createOscillator();
     const filter = this.audioContext.createBiquadFilter();
