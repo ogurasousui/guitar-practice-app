@@ -316,69 +316,16 @@ h1 {
   display: block;
   width: 100%;
   max-width: 100%;
-  height: auto;
-  min-height: 148px;
+  min-height: 132px;
+  overflow: hidden;
   border-radius: 8px;
+  background: #fbfaf7;
 }
 
-.tab-background {
-  fill: #202124;
-}
-
-.tab-string-label,
-.tab-fret,
-.tab-duration,
-.tab-legend {
-  fill: #f7f4ef;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, ui-monospace,
-    monospace;
-}
-
-.tab-string-label {
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.tab-string-line {
-  stroke: #cfd2d6;
-  stroke-width: 1.2;
-}
-
-.tab-bar-line {
-  stroke: #f7f4ef;
-  stroke-width: 2;
-}
-
-.tab-stem,
-.tab-flag {
-  fill: none;
-  stroke: #f2c36b;
-  stroke-linecap: round;
-  stroke-width: 2.4;
-}
-
-.tab-fret-bg {
-  fill: #202124;
-}
-
-.tab-fret {
-  dominant-baseline: middle;
-  font-size: 16px;
-  font-weight: 800;
-  text-anchor: middle;
-}
-
-.tab-duration {
-  fill: #f2c36b;
-  font-size: 12px;
-  font-weight: 800;
-  text-anchor: middle;
-}
-
-.tab-legend {
-  fill: #cfd2d6;
-  font-size: 12px;
+.tab-notation svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 @media (max-width: 900px) {
