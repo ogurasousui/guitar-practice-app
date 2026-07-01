@@ -418,7 +418,8 @@ h1 {
   font-weight: 800;
 }
 
-.tab-notation {
+.tab-notation,
+.vexflow-tab-notation {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -430,6 +431,26 @@ h1 {
 .phrase-card-compact .tab-notation {
   min-height: 132px;
   margin-top: 8px;
+}
+
+.vexflow-tab-notation {
+  min-height: 180px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.vexflow-tab-canvas svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.vexflow-tab-notation span {
+  display: block;
+  padding: 18px;
+  color: #60656c;
+  font-weight: 800;
 }
 
 .tab-background {
